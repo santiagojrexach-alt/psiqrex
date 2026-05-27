@@ -2347,6 +2347,17 @@ async function fullSync() {
       }
     }
 
+    // Deduplicate local patients by id (safety net)
+    const allLocalPts = await db.all('pacientes');
+    const seenIds = new Set();
+    for (const p of allLocalPts) {
+      if (seenIds.has(p.id)) {
+        await db.del('pacientes', p.id);
+      } else {
+        seenIds.add(p.id);
+      }
+    }
+
     hideSyncBar();
     setSyncStatus('ok', 'Supabase');
     toast('Sincronización completa', 'ok', 2500);
@@ -2453,7 +2464,13 @@ async function boot(){
 
   // 7. Restore draft
   const draft = await db.get('drafts','evol');
-  if (draft) await loadDraft();
+  if (draft) {
+    // Only restore if draft has actual field content (not just metadata)
+    const hasContent = draft.fields && Object.values(draft.fields).some(v => v && v.trim());
+    const hasTags    = draft.tags && draft.tags.length > 0;
+    if (hasContent || hasTags) await loadDraft();
+    else await db.del('drafts', 'evol'); // clean up empty draft
+  }
 
   // 8. Dismiss loader
   const loader = document.getElementById('loading');
