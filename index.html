@@ -562,14 +562,12 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
 
       <div class="cfg-section">
         <div class="acc-header" data-acc="db">
-          <span class="acc-title">&#x2601;&#xFE0F; Base de datos (Supabase)</span>
+          <span class="acc-title">&#x2601;&#xFE0F; Sincronización</span>
           <span class="acc-arrow">&#x25BE;</span>
         </div>
         <div class="acc-body" id="acc-db">
           <div class="card">
-            <div class="cfg-row"><div><div class="cfg-label">Supabase URL</div><div class="cfg-sub" id="cfg-url-label">No configurado</div></div><button class="btn btn-ghost btn-sm" id="btn-cfg-supabase">Configurar</button></div>
-            <div class="cfg-row"><div><div class="cfg-label">Anon Key</div><div class="cfg-sub" id="cfg-key-label">No configurado</div></div></div>
-            <div class="cfg-row" id="cfg-sync-row" style="display:none"><div><div class="cfg-label">Sincronización</div><div class="cfg-sub" id="cfg-sync-status">Conectado</div></div><button class="btn btn-ghost btn-sm" id="btn-sync-now">Sincronizar ahora</button></div>
+            <div class="cfg-row"><div><div class="cfg-label">Estado</div><div class="cfg-sub" id="cfg-sync-status">No conectado</div></div><button class="btn btn-ghost btn-sm" id="btn-sync-now">Sincronizar ahora</button></div>
           </div>
         </div>
       </div>
@@ -653,17 +651,7 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
     <div class="modal-footer"><button class="btn btn-ghost" data-close="modal-template">Cancelar</button><button class="btn btn-primary" id="btn-save-template">Guardar</button></div>
   </div>
 </div>
-<div class="modal-overlay" id="modal-supabase">
-  <div class="modal">
-    <div class="modal-header"><div class="modal-title">Configurar Supabase</div><button class="modal-close" data-close="modal-supabase">&#xD7;</button></div>
-    <div class="modal-body">
-      <div style="background:var(--adim);border:1px solid rgba(124,106,247,0.2);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--accent2);line-height:1.6">URL y anon key en tu proyecto Supabase &#x2192; Settings &#x2192; API. La seguridad real la provee Row Level Security.</div>
-      <div class="field"><label>Supabase URL</label><input type="text" id="cfg-url-input" placeholder="https://xxxx.supabase.co"></div>
-      <div class="field"><label>Anon Key</label><input type="text" id="cfg-key-input" placeholder="eyJhbGc..."></div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-ghost" data-close="modal-supabase">Cancelar</button><button class="btn btn-primary" id="btn-save-supabase">Guardar</button></div>
-  </div>
-</div>
+
 <!-- SET PASSWORD MODAL (first login via invite) -->
 <div class="modal-overlay" id="modal-set-password">
   <div class="modal">
@@ -712,12 +700,7 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
     <div class="card">
       <div class="card-section">
         <div id="auth-error" style="display:none;background:var(--red-bg);border:1px solid rgba(248,113,113,0.2);border-radius:var(--rs);padding:10px 13px;font-size:12px;color:var(--red);margin-bottom:14px"></div>
-        <!-- Supabase config (shown only when not configured) -->
-        <div id="auth-sb-config" style="display:none;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--b1)">
-          <div style="font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:10px">Configurar Supabase</div>
-          <div class="field"><label>URL del proyecto</label><input type="text" id="auth-sb-url" placeholder="https://xxxx.supabase.co"></div>
-          <div class="field"><label>Anon Key</label><input type="text" id="auth-sb-key" placeholder="eyJhbGc..."></div>
-        </div>
+        <div id="auth-sb-config" style="display:none"></div>
         <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="tu@email.com" autocomplete="email"></div>
         <div class="field"><label>Contraseña</label><input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password"></div>
         <button class="btn btn-primary" id="btn-login" style="width:100%;justify-content:center;margin-top:4px">
@@ -805,6 +788,10 @@ const DEFAULT_TEMPLATES=[
 /* ============================================================
    SUPABASE LAYER
    ============================================================ */
+// Supabase credentials (hardcoded — anon key is safe in frontend)
+const SUPABASE_URL = 'https://asnbutznnaykjntgaths.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzbmJ1dHpubmF5a2pudGdhdGhzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk4Mzk3ODAsImV4cCI6MjA5NTQxNTc4MH0.Hmws5BYh6BrGGJNb4zVQ2YLNWoOTK_5rvrdKioDUaDI';
+
 const SB = {
   client: null,
   user:   null,
@@ -1728,14 +1715,11 @@ async function renderConfigStats(){
   const[ps,es]=await Promise.all([db.all('pacientes'),db.all('evoluciones')]);
   document.getElementById('cfg-pt-count').textContent=ps.length+' paciente'+(ps.length!==1?'s':'');
   document.getElementById('cfg-ev-count').textContent=es.length+' evoluci\u00f3n'+(es.length!==1?'es':'');
-  document.getElementById('cfg-url-label').textContent=STATE.config.supabaseUrl||'No configurado';
-  document.getElementById('cfg-key-label').textContent=STATE.config.supabaseKey?STATE.config.supabaseKey.slice(0,24)+'...':'No configurado';
-  const syncRow = document.getElementById('cfg-sync-row');
-  if (SB.client && SB.user) {
-    syncRow.style.display = '';
-    document.getElementById('cfg-sync-status').textContent = 'Conectado como ' + (SB.user.email || SB.user.id);
-  } else {
-    syncRow.style.display = 'none';
+  const syncStatus = document.getElementById('cfg-sync-status');
+  if (syncStatus) {
+    syncStatus.textContent = SB.user
+      ? 'Conectado como ' + (SB.user.email || SB.user.id)
+      : 'No conectado';
   }
 }
 document.addEventListener('click', async e => {
@@ -1745,14 +1729,8 @@ document.addEventListener('click', async e => {
   }
 });
 
-document.getElementById('btn-cfg-supabase').addEventListener('click',()=>{document.getElementById('cfg-url-input').value=STATE.config.supabaseUrl||'';document.getElementById('cfg-key-input').value=STATE.config.supabaseKey||'';openModal('modal-supabase');});
-document.getElementById('btn-save-supabase').addEventListener('click',async()=>{
-  const url=document.getElementById('cfg-url-input').value.trim();const key=document.getElementById('cfg-key-input').value.trim();
-  if(!url||!key){toast('Complet\u00e1 ambos campos','error');return;}
-  STATE.setConfig('supabaseUrl',url);STATE.setConfig('supabaseKey',key);
-  await db.put('config',{key:'supabaseUrl',value:url});await db.put('config',{key:'supabaseKey',value:key});
-  closeModal('modal-supabase');toast('Configuraci\u00f3n de Supabase guardada');updateSyncIndicator();await renderConfigStats();
-});
+document.// Supabase config hardcoded
+
 document.getElementById('btn-export').addEventListener('click',async()=>{
   const allConfig = await db.all('config');
   const qnotes = allConfig.filter(r => r.key.startsWith('qnotes_'));
@@ -2209,25 +2187,13 @@ document.addEventListener('click', e => {
 
 /* ── AUTH ────────────────────────────────────────────────── */
 function showAuthScreen() {
-  const hasCreds = STATE.config.supabaseUrl && STATE.config.supabaseKey;
-  const sbConfig = document.getElementById('auth-sb-config');
-  sbConfig.style.display = hasCreds ? 'none' : 'block';
-  if (!hasCreds) {
-    document.getElementById('auth-sb-url').value = '';
-    document.getElementById('auth-sb-key').value = '';
-  }
   const screen = document.getElementById('auth-screen');
   screen.style.display    = 'flex';
   screen.style.visibility = 'visible';
   screen.style.zIndex     = '9999';
   document.getElementById('app').style.visibility = 'hidden';
   document.getElementById('nav').style.visibility = 'hidden';
-  setTimeout(() => {
-    const focusEl = hasCreds
-      ? document.getElementById('auth-email')
-      : document.getElementById('auth-sb-url');
-    focusEl?.focus();
-  }, 200);
+  setTimeout(() => document.getElementById('auth-email')?.focus(), 200);
 }
 
 function hideAuthScreen() {
@@ -2252,21 +2218,6 @@ document.getElementById('btn-login').addEventListener('click', async () => {
   const email    = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   if (!email || !password) { showAuthError('Completá email y contraseña'); return; }
-
-  // If SB not configured yet, pick up from form
-  if (!STATE.config.supabaseUrl || !STATE.config.supabaseKey) {
-    const url = document.getElementById('auth-sb-url').value.trim();
-    const key = document.getElementById('auth-sb-key').value.trim();
-    if (!url || !key) { showAuthError('Completá la URL y Anon Key de Supabase'); return; }
-    // Save credentials
-    STATE.setConfig('supabaseUrl', url);
-    STATE.setConfig('supabaseKey', key);
-    await db.put('config', {key:'supabaseUrl', value:url});
-    await db.put('config', {key:'supabaseKey', value:key});
-    const ok = SB.init(url, key);
-    if (!ok) { showAuthError('No se pudo conectar a Supabase. Verificá la URL y key.'); return; }
-    await new Promise(r => setTimeout(r, 300));
-  }
 
   clearAuthError();
   const lbl = document.getElementById('login-label');
@@ -2445,13 +2396,9 @@ async function boot(){
   // 2. IndexedDB
   STATE.db = await initDB();
 
-  // 3. Load config (URL, key)
-  const [urlRow, keyRow] = await Promise.all([
-    db.get('config','supabaseUrl'),
-    db.get('config','supabaseKey'),
-  ]);
-  if (urlRow) STATE.setConfig('supabaseUrl', urlRow.value);
-  if (keyRow) STATE.setConfig('supabaseKey', keyRow.value);
+  // 3. Always use hardcoded Supabase credentials
+  STATE.setConfig('supabaseUrl', SUPABASE_URL);
+  STATE.setConfig('supabaseKey', SUPABASE_KEY);
 
   // 4. Seed templates if empty
   const existingTpls = await db.all('templates');
