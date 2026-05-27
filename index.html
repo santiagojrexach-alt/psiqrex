@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>PsiqRex</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F9E0;</text></svg>">
@@ -386,7 +387,7 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
     <button class="nav-tab" data-tab="busqueda">B&#xFA;squeda</button>
     <button class="nav-tab" data-tab="config">Config</button>
   </div>
-  <div class="nav-right"><div id="sync-indicator"><div class="sync-dot" id="sync-dot"></div><span id="sync-label"></span></div><button class="theme-btn" id="btn-theme" title="Cambiar tema">&#x263D;</button></div>
+  <div class="nav-right"><div id="sync-indicator"><div class="sync-dot" id="sync-dot"></div><span id="sync-label"></span></div><button class="theme-btn" id="btn-theme" title="Cambiar tema">&#x263D;</button><button class="btn-logout hidden" id="btn-logout" title="Cerrar sesión" style="background:none;border:none;color:var(--t3);font-size:11px;font-family:var(--mono);cursor:pointer;padding:4px 8px;border-radius:6px;transition:color 0.15s">salir</button></div>
 </nav>
 <div id="app">
   <div class="tab-panel active" id="tab-pacientes">
@@ -568,6 +569,7 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
           <div class="card">
             <div class="cfg-row"><div><div class="cfg-label">Supabase URL</div><div class="cfg-sub" id="cfg-url-label">No configurado</div></div><button class="btn btn-ghost btn-sm" id="btn-cfg-supabase">Configurar</button></div>
             <div class="cfg-row"><div><div class="cfg-label">Anon Key</div><div class="cfg-sub" id="cfg-key-label">No configurado</div></div></div>
+            <div class="cfg-row" id="cfg-sync-row" style="display:none"><div><div class="cfg-label">Sincronización</div><div class="cfg-sub" id="cfg-sync-status">Conectado</div></div><button class="btn btn-ghost btn-sm" id="btn-sync-now">Sincronizar ahora</button></div>
           </div>
         </div>
       </div>
@@ -671,6 +673,35 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
 </div>
 <div id="toast-wrap"></div>
 
+<!-- AUTH SCREEN -->
+<div id="auth-screen" style="position:fixed;inset:0;background:var(--bg);z-index:600;display:none;align-items:center;justify-content:center;padding:20px">
+  <div style="width:min(380px,100%);display:flex;flex-direction:column;gap:20px">
+    <div style="text-align:center">
+      <div style="font-size:40px;margin-bottom:12px">&#x1F9E0;</div>
+      <div style="font-size:24px;font-weight:700;letter-spacing:-0.03em">PsiqRex</div>
+      <div style="font-size:13px;color:var(--t2);margin-top:6px">Historia clínica psiquiátrica</div>
+    </div>
+    <div class="card">
+      <div class="card-section">
+        <div id="auth-error" style="display:none;background:var(--red-bg);border:1px solid rgba(248,113,113,0.2);border-radius:var(--rs);padding:10px 13px;font-size:12px;color:var(--red);margin-bottom:14px"></div>
+        <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="tu@email.com" autocomplete="email"></div>
+        <div class="field"><label>Contraseña</label><input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password"></div>
+        <button class="btn btn-primary" id="btn-login" style="width:100%;justify-content:center;margin-top:4px">
+          <span id="login-label">Iniciar sesión</span>
+        </button>
+      </div>
+    </div>
+    <div style="text-align:center;font-size:12px;color:var(--t3)">
+      Uso personal · Los datos se sincronizan con Supabase
+    </div>
+  </div>
+</div>
+
+<!-- SYNC STATUS BAR (shown during sync) -->
+<div id="sync-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:var(--s2);border-top:1px solid var(--b2);padding:8px 18px;font-size:12px;color:var(--t2);font-family:var(--mono);z-index:99;display:none;align-items:center;gap:8px">
+  <span class="spinner"></span><span id="sync-bar-text">Sincronizando...</span>
+</div>
+
 <!-- TUTORIAL OVERLAY -->
 <div id="tutorial-overlay">
   <div class="tut-curtain" id="tut-top"></div>
@@ -733,6 +764,149 @@ const DEFAULT_TEMPLATES=[
   {id:'dt5',name:'Psicosemiolog\u00eda \u2014 s\u00edndrome confusional',field:'psicosemiologia',builtin:true,text:'Paciente con compromiso fluctuante del nivel de conciencia. Desorientaci\u00f3n temporoespacial. Dificultad para mantener la atenci\u00f3n. Psicomotricidad variable, con per\u00edodos de agitaci\u00f3n y per\u00edodos de inhibici\u00f3n. Discurso disgregado, incoherente. Alucinaciones visuales referidas por la familia. Juicio deteriorado. Sin cr\u00edtica. Evaluar causa org\u00e1nica subyacente.'},
   {id:'dt6',name:'Plan \u2014 internaci\u00f3n est\u00e1ndar',field:'plan',builtin:true,text:'Se decide continuar internaci\u00f3n para estabilizaci\u00f3n cl\u00ednica y ajuste farmacol\u00f3gico. Se solicita: [estudios complementarios]. Medicaci\u00f3n: [detallar esquema]. Se indica contenci\u00f3n verbal y ambiental. Se informa a familiar responsable. Se elevar\u00e1 a pase de guardia. Reevaluar en pr\u00f3ximo turno.'},
 ];
+
+/* ============================================================
+   SUPABASE LAYER
+   ============================================================ */
+const SB = {
+  client: null,
+  user:   null,
+
+  init(url, key) {
+    if (!url || !key) return false;
+    try {
+      this.client = window.supabase.createClient(url, key, {
+        auth: { persistSession: true, autoRefreshToken: true }
+      });
+      return true;
+    } catch(e) {
+      console.error('[SB] init error:', e);
+      return false;
+    }
+  },
+
+  async getSession() {
+    if (!this.client) return null;
+    const { data } = await this.client.auth.getSession();
+    return data?.session ?? null;
+  },
+
+  async signIn(email, password) {
+    if (!this.client) return { error: 'Cliente no inicializado' };
+    const { data, error } = await this.client.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message };
+    this.user = data.user;
+    return { user: data.user };
+  },
+
+  async signOut() {
+    if (!this.client) return;
+    await this.client.auth.signOut();
+    this.user = null;
+  },
+
+  async upsertPaciente(p) {
+    if (!this.client || !this.user) return;
+    const { error } = await this.client.from('pacientes').upsert({
+      id: p.id, user_id: this.user.id,
+      name: p.name, datos: p.datos,
+      created_at: p.created_at, updated_at: p.updated_at,
+    }, { onConflict: 'id' });
+    if (error) console.error('[SB] upsertPaciente:', error.message);
+  },
+
+  async deletePaciente(id) {
+    if (!this.client || !this.user) return;
+    const { error } = await this.client.from('pacientes').delete().eq('id', id).eq('user_id', this.user.id);
+    if (error) console.error('[SB] deletePaciente:', error.message);
+  },
+
+  async upsertEvolucion(e) {
+    if (!this.client || !this.user) return;
+    const { error } = await this.client.from('evoluciones').upsert({
+      id: e.id, paciente_id: e.paciente_id, user_id: this.user.id,
+      tipo: e.tipo, contenido: e.contenido, tags: e.tags,
+      fecha_evolucion: e.fecha_evolucion,
+      created_at: e.created_at, updated_at: e.updated_at,
+    }, { onConflict: 'id' });
+    if (error) console.error('[SB] upsertEvolucion:', error.message);
+  },
+
+  async deleteEvolucion(id) {
+    if (!this.client || !this.user) return;
+    const { error } = await this.client.from('evoluciones').delete().eq('id', id).eq('user_id', this.user.id);
+    if (error) console.error('[SB] deleteEvolucion:', error.message);
+  },
+
+  async fetchAll() {
+    if (!this.client || !this.user) return null;
+    const [{ data: pacientes, error: e1 }, { data: evoluciones, error: e2 }] = await Promise.all([
+      this.client.from('pacientes').select('*').eq('user_id', this.user.id),
+      this.client.from('evoluciones').select('*').eq('user_id', this.user.id),
+    ]);
+    if (e1 || e2) { console.error('[SB] fetchAll:', e1?.message, e2?.message); return null; }
+    return { pacientes, evoluciones };
+  },
+};
+
+/* ── SYNC QUEUE (offline resilience) ──────────────────────
+   Stores pending operations when offline, flushes on reconnect
+   ──────────────────────────────────────────────────────── */
+const SyncQueue = {
+  async push(op) {
+    // op: { type: 'upsert'|'delete', entity: 'paciente'|'evolucion', data: {...} }
+    const queue = await SyncQueue.get();
+    // Deduplicate: replace existing op for same id
+    const filtered = queue.filter(q => !(q.entity === op.entity && q.data?.id === op.data?.id));
+    filtered.push({ ...op, ts: Date.now() });
+    await db.put('config', { key: 'sync_queue', value: JSON.stringify(filtered) });
+  },
+
+  async get() {
+    const row = await db.get('config', 'sync_queue');
+    try { return row ? JSON.parse(row.value) : []; } catch { return []; }
+  },
+
+  async flush() {
+    if (!SB.client || !SB.user) return;
+    const queue = await SyncQueue.get();
+    if (!queue.length) return;
+    showSyncBar('Sincronizando ' + queue.length + ' cambios...');
+    const failed = [];
+    for (const op of queue) {
+      try {
+        if (op.type === 'upsert' && op.entity === 'paciente')    await SB.upsertPaciente(op.data);
+        if (op.type === 'upsert' && op.entity === 'evolucion')   await SB.upsertEvolucion(op.data);
+        if (op.type === 'delete' && op.entity === 'paciente')    await SB.deletePaciente(op.data.id);
+        if (op.type === 'delete' && op.entity === 'evolucion')   await SB.deleteEvolucion(op.data.id);
+      } catch(e) {
+        failed.push(op);
+      }
+    }
+    await db.put('config', { key: 'sync_queue', value: JSON.stringify(failed) });
+    hideSyncBar();
+    if (!failed.length) {
+      setSyncStatus('ok', 'Supabase');
+      updateSyncBadge(0);
+    } else {
+      setSyncStatus('draft', failed.length + ' pendientes');
+      updateSyncBadge(failed.length);
+    }
+  },
+};
+
+function showSyncBar(msg) {
+  const bar = document.getElementById('sync-bar');
+  document.getElementById('sync-bar-text').textContent = msg;
+  bar.style.display = 'flex';
+}
+function hideSyncBar() {
+  document.getElementById('sync-bar').style.display = 'none';
+}
+function updateSyncBadge(n) {
+  const lbl = document.getElementById('sync-label');
+  if (n > 0) lbl.textContent = n + ' pendiente' + (n>1?'s':'');
+}
 
 /* STATE */
 const STATE=(() => {
@@ -1169,8 +1343,14 @@ async function deleteCurrentPatient(){
   const p=await db.get('pacientes',STATE.pid);if(!p)return;
   showConfirm('Eliminar paciente','Se eliminar\u00e1 "'+p.name+'" y todas sus evoluciones. Esta acci\u00f3n es irreversible.',async()=>{
     const evols=await db.byIndex('evoluciones','paciente_id',STATE.pid);
-    for(const e of evols)await db.del('evoluciones',e.id);
+    for(const e of evols){
+      await db.del('evoluciones',e.id);
+      if(SB.client && SB.user) await SB.deleteEvolucion(e.id);
+      else await SyncQueue.push({type:'delete',entity:'evolucion',data:{id:e.id}});
+    }
     await db.del('pacientes',STATE.pid);
+    if(SB.client && SB.user) await SB.deletePaciente(STATE.pid);
+    else await SyncQueue.push({type:'delete',entity:'paciente',data:{id:STATE.pid}});
     toast('Paciente eliminado');
     showPatientList();
     await refreshEvolPatientSelect();
@@ -1200,7 +1380,10 @@ document.getElementById('btn-save-patient').addEventListener('click',async()=>{
   let patient;
   if(STATE.editPid){const ex=await db.get('pacientes',STATE.editPid);patient={...ex,name,datos,updated_at:now};}
   else{patient={id:uuid(),name,datos,created_at:now,updated_at:now};}
-  await db.put('pacientes',patient);closeModal('modal-patient');
+  await db.put('pacientes',patient);
+  if(SB.client && SB.user) await SB.upsertPaciente(patient);
+  else await SyncQueue.push({type:'upsert',entity:'paciente',data:patient});
+  closeModal('modal-patient');
   toast(STATE.editPid?'Paciente actualizado':'Paciente creado');
   if(STATE.pid===patient.id)await openPatientDetail(patient.id);else await renderPatientList(document.getElementById('search-patients').value);
   await refreshEvolPatientSelect();
@@ -1279,8 +1462,13 @@ async function saveEvolucion(){
   const isEdit=!!STATE.editEid;const existing=isEdit?await db.get('evoluciones',STATE.editEid):null;
   const evol={id:isEdit?STATE.editEid:uuid(),paciente_id:patientId,tipo:STATE.evol.tipo,contenido,tags:[...STATE.evol.tags],fecha_evolucion:new Date(dateRaw).toISOString(),created_at:existing?.created_at||nowISO(),updated_at:nowISO()};
   await db.put('evoluciones',evol);
-  const p=await db.get('pacientes',patientId);if(p){p.updated_at=nowISO();await db.put('pacientes',p);}
-  await db.del('drafts','evol');toast(isEdit?'Evoluci\u00f3n actualizada':'Evoluci\u00f3n guardada');
+  if(SB.client && SB.user) await SB.upsertEvolucion(evol);
+  else await SyncQueue.push({type:'upsert',entity:'evolucion',data:evol});
+  const p=await db.get('pacientes',patientId);
+  if(p){p.updated_at=nowISO();await db.put('pacientes',p);
+    if(SB.client && SB.user) await SB.upsertPaciente(p);
+  }
+  await db.del('drafts','evol');toast(isEdit?'Evolución actualizada':'Evolución guardada');
   STATE.resetEvol();resetEvolForm();hideDraftNote();await refreshSidebar();
 }
 function resetEvolForm(){
@@ -1299,7 +1487,13 @@ async function editEvol(id){
   document.querySelectorAll('.type-chip').forEach(c=>c.classList.toggle('active',c.dataset.tipo===e.tipo));
   renderEvolFields(e.tipo);renderTags();toast('Evoluci\u00f3n cargada para editar','info',2000);
 }
-async function deleteEvol(id){showConfirm('Eliminar evoluci\u00f3n','Esta acci\u00f3n es irreversible.',async()=>{await db.del('evoluciones',id);await renderTimeline(STATE.pid,STATE.evolFilter);toast('Evoluci\u00f3n eliminada');});}
+async function deleteEvol(id){showConfirm('Eliminar evolución','Esta acción es irreversible.',async()=>{
+  await db.del('evoluciones',id);
+  if(SB.client && SB.user) await SB.deleteEvolucion(id);
+  else await SyncQueue.push({type:'delete',entity:'evolucion',data:{id}});
+  await renderTimeline(STATE.pid,STATE.evolFilter);
+  toast('Evolución eliminada');
+});}
 
 async function dupEvol(id) {
   const src = await db.get('evoluciones', id);
@@ -1494,7 +1688,21 @@ async function renderConfigStats(){
   document.getElementById('cfg-ev-count').textContent=es.length+' evoluci\u00f3n'+(es.length!==1?'es':'');
   document.getElementById('cfg-url-label').textContent=STATE.config.supabaseUrl||'No configurado';
   document.getElementById('cfg-key-label').textContent=STATE.config.supabaseKey?STATE.config.supabaseKey.slice(0,24)+'...':'No configurado';
+  const syncRow = document.getElementById('cfg-sync-row');
+  if (SB.client && SB.user) {
+    syncRow.style.display = '';
+    document.getElementById('cfg-sync-status').textContent = 'Conectado como ' + (SB.user.email || SB.user.id);
+  } else {
+    syncRow.style.display = 'none';
+  }
 }
+document.addEventListener('click', async e => {
+  if (e.target.id === 'btn-sync-now') {
+    if (!SB.client || !SB.user) { toast('Iniciá sesión primero','error'); return; }
+    await fullSync();
+  }
+});
+
 document.getElementById('btn-cfg-supabase').addEventListener('click',()=>{document.getElementById('cfg-url-input').value=STATE.config.supabaseUrl||'';document.getElementById('cfg-key-input').value=STATE.config.supabaseKey||'';openModal('modal-supabase');});
 document.getElementById('btn-save-supabase').addEventListener('click',async()=>{
   const url=document.getElementById('cfg-url-input').value.trim();const key=document.getElementById('cfg-key-input').value.trim();
@@ -1943,6 +2151,142 @@ document.addEventListener('click', e => {
   if (e.target.id === 'btn-start-tutorial') startTutorial();
 });
 
+/* ── AUTH ────────────────────────────────────────────────── */
+function showAuthScreen() {
+  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('nav').style.display = 'none';
+  setTimeout(() => document.getElementById('auth-email').focus(), 200);
+}
+
+function hideAuthScreen() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = '';
+  document.getElementById('nav').style.display = '';
+}
+
+function showAuthError(msg) {
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function clearAuthError() {
+  document.getElementById('auth-error').style.display = 'none';
+}
+
+document.getElementById('btn-login').addEventListener('click', async () => {
+  const email    = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  if (!email || !password) { showAuthError('Completá email y contraseña'); return; }
+  clearAuthError();
+  const lbl = document.getElementById('login-label');
+  lbl.innerHTML = '<span class="spinner"></span>';
+  const { user, error } = await SB.signIn(email, password);
+  lbl.textContent = 'Iniciar sesión';
+  if (error) { showAuthError(error); return; }
+  hideAuthScreen();
+  document.getElementById('btn-logout').classList.remove('hidden');
+  await onSignedIn();
+});
+
+// Enter key on password field
+document.getElementById('auth-password').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-login').click();
+});
+
+document.getElementById('btn-logout').addEventListener('click', async () => {
+  showConfirm('Cerrar sesión', '¿Seguro? Los datos locales se conservan.',  async () => {
+    await SB.signOut();
+    document.getElementById('btn-logout').classList.add('hidden');
+    setSyncStatus('', '');
+    showAuthScreen();
+  });
+});
+
+/* ── POST-LOGIN: sync + merge local → remote ─────────────── */
+async function onSignedIn() {
+  setSyncStatus('ok', 'Supabase');
+  document.getElementById('btn-logout').classList.remove('hidden');
+
+  // First: flush any pending offline queue
+  await SyncQueue.flush();
+
+  // Then: full bidirectional sync
+  await fullSync();
+}
+
+async function fullSync() {
+  if (!SB.client || !SB.user) return;
+  showSyncBar('Sincronizando con Supabase...');
+  try {
+    const remote = await SB.fetchAll();
+    if (!remote) { hideSyncBar(); return; }
+
+    // Get local data
+    const localPts   = await db.all('pacientes');
+    const localEvols = await db.all('evoluciones');
+
+    // Build maps for merge
+    const remotePtMap   = Object.fromEntries(remote.pacientes.map(p => [p.id, p]));
+    const remoteEvolMap = Object.fromEntries(remote.evoluciones.map(e => [e.id, e]));
+    const localPtMap    = Object.fromEntries(localPts.map(p => [p.id, p]));
+    const localEvolMap  = Object.fromEntries(localEvols.map(e => [e.id, e]));
+
+    // Merge patients: last-write-wins by updated_at
+    const mergedPts = [];
+    const allPtIds  = new Set([...Object.keys(remotePtMap), ...Object.keys(localPtMap)]);
+    for (const id of allPtIds) {
+      const r = remotePtMap[id], l = localPtMap[id];
+      if (!r) {
+        // Only local — push to remote
+        await SB.upsertPaciente(l);
+        mergedPts.push(l);
+      } else if (!l) {
+        // Only remote — save locally (skip demo data check)
+        await db.put('pacientes', r);
+        mergedPts.push(r);
+      } else {
+        // Both exist — keep newer
+        const winner = new Date(r.updated_at) >= new Date(l.updated_at) ? r : l;
+        await db.put('pacientes', winner);
+        if (winner === l) await SB.upsertPaciente(l);
+        mergedPts.push(winner);
+      }
+    }
+
+    // Merge evoluciones: same strategy
+    const allEvolIds = new Set([...Object.keys(remoteEvolMap), ...Object.keys(localEvolMap)]);
+    for (const id of allEvolIds) {
+      const r = remoteEvolMap[id], l = localEvolMap[id];
+      if (!r) {
+        await SB.upsertEvolucion(l);
+      } else if (!l) {
+        await db.put('evoluciones', r);
+      } else {
+        const winner = new Date(r.updated_at || r.created_at) >= new Date(l.updated_at || l.created_at) ? r : l;
+        await db.put('evoluciones', winner);
+        if (winner === l) await SB.upsertEvolucion(l);
+      }
+    }
+
+    hideSyncBar();
+    setSyncStatus('ok', 'Supabase');
+    toast('Sincronización completa', 'ok', 2500);
+
+    // Refresh UI
+    await renderPatientList();
+    await refreshEvolPatientSelect();
+    await refreshSidebar();
+    if (STATE.currentTab === 'config') await renderConfigStats();
+
+  } catch(err) {
+    console.error('[Sync]', err);
+    hideSyncBar();
+    setSyncStatus('draft', 'Error de sync');
+    toast('Error al sincronizar: ' + err.message, 'error');
+  }
+}
+
 /* ── KEYBOARD — only Escape to close modals/pickers ──────── */
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
@@ -1969,22 +2313,74 @@ async function seedDemoData(){
 
 /* BOOT */
 async function boot(){
-  // Apply saved theme before anything renders
+  // 1. Theme
   const savedTheme = localStorage.getItem('psiqrex_theme');
   applyTheme(savedTheme === 'light');
-  STATE.db=await initDB();
-  const[urlRow,keyRow]=await Promise.all([db.get('config','supabaseUrl'),db.get('config','supabaseKey')]);
-  if(urlRow)STATE.setConfig('supabaseUrl',urlRow.value);if(keyRow)STATE.setConfig('supabaseKey',keyRow.value);
-  const existingTpls=await db.all('templates');
-  if(!existingTpls.length)for(const t of DEFAULT_TEMPLATES)await db.put('templates',t);
-  const existingPts=await db.all('pacientes');
-  if(!existingPts.length)await seedDemoData();
-  renderEvolFields('guardia');await renderPatientList();await refreshEvolPatientSelect();
-  document.getElementById('evol-date').value=nowLocal();updateSyncIndicator();
-  const draft=await db.get('drafts','evol');if(draft)await loadDraft();
-  const loader=document.getElementById('loading');loader.classList.add('out');loader.addEventListener('animationend',()=>loader.remove(),{once:true});
-  // Show tutorial on first visit
-  if(!localStorage.getItem('psiqrex_tutdone')) setTimeout(startTutorial, 600);
+
+  // 2. IndexedDB
+  STATE.db = await initDB();
+
+  // 3. Load config (URL, key)
+  const [urlRow, keyRow] = await Promise.all([
+    db.get('config','supabaseUrl'),
+    db.get('config','supabaseKey'),
+  ]);
+  if (urlRow) STATE.setConfig('supabaseUrl', urlRow.value);
+  if (keyRow) STATE.setConfig('supabaseKey', keyRow.value);
+
+  // 4. Seed templates if empty
+  const existingTpls = await db.all('templates');
+  if (!existingTpls.length) for (const t of DEFAULT_TEMPLATES) await db.put('templates', t);
+
+  // 5. Seed demo data if no patients yet
+  const existingPts = await db.all('pacientes');
+  if (!existingPts.length) await seedDemoData();
+
+  // 6. Init UI
+  renderEvolFields('guardia');
+  await renderPatientList();
+  await refreshEvolPatientSelect();
+  document.getElementById('evol-date').value = nowLocal();
+
+  // 7. Restore draft
+  const draft = await db.get('drafts','evol');
+  if (draft) await loadDraft();
+
+  // 8. Dismiss loader
+  const loader = document.getElementById('loading');
+  loader.classList.add('out');
+  loader.addEventListener('animationend', () => loader.remove(), {once:true});
+
+  // 9. Supabase auth check
+  if (STATE.config.supabaseUrl && STATE.config.supabaseKey) {
+    const ok = SB.init(STATE.config.supabaseUrl, STATE.config.supabaseKey);
+    if (ok) {
+      const session = await SB.getSession();
+      if (session) {
+        SB.user = session.user;
+        document.getElementById('btn-logout').classList.remove('hidden');
+        setSyncStatus('ok', 'Supabase');
+        // Flush offline queue then sync
+        await SyncQueue.flush();
+        await fullSync();
+      } else {
+        // Has credentials but no active session → show login
+        showAuthScreen();
+      }
+    }
+  } else {
+    // No Supabase configured → run locally
+    updateSyncIndicator();
+  }
+
+  // 10. Tutorial on first visit
+  if (!localStorage.getItem('psiqrex_tutdone')) setTimeout(startTutorial, 800);
+
+  // 11. Flush sync queue when coming back online
+  window.addEventListener('online', async () => {
+    updateSyncIndicator();
+    if (SB.client && SB.user) await SyncQueue.flush();
+  });
 }
 boot().catch(err=>{document.getElementById('loading').innerHTML='<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:12px">\u26a0\ufe0f</div><div style="color:var(--red);font-size:13px">Error al inicializar:<br>'+String(err.message)+'</div></div>';});
 
