@@ -2274,11 +2274,19 @@ async function fullSync() {
     const isFirstSync   = !syncedOnceRow;
 
     if (isFirstSync) {
-      // First sync on this device: remote is source of truth.
-      // Wipe local and load from remote entirely.
-      await db.clearAll(['pacientes', 'evoluciones']);
-      for (const p of remote.pacientes)   await db.put('pacientes', p);
-      for (const e of remote.evoluciones) await db.put('evoluciones', e);
+      // First sync: push local to remote first, then merge
+      const localPts   = await db.all('pacientes');
+      const localEvols = await db.all('evoluciones');
+      // Push any local data to remote
+      for (const p of localPts)   await SB.upsertPaciente(p);
+      for (const e of localEvols) await SB.upsertEvolucion(e);
+      // Now fetch fresh remote (includes what we just pushed)
+      const fresh = await SB.fetchAll();
+      if (fresh) {
+        await db.clearAll(['pacientes', 'evoluciones']);
+        for (const p of fresh.pacientes)   await db.put('pacientes', p);
+        for (const e of fresh.evoluciones) await db.put('evoluciones', e);
+      }
       await db.put('config', { key: 'synced_once', value: '1' });
     } else {
       // Subsequent syncs: bidirectional merge, last-write-wins by updated_at
