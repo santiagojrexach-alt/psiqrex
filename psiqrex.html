@@ -1,0 +1,2001 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PsiqRex</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F9E0;</text></svg>">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#111113">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PsiqRex">
+<meta name="description" content="Historia clínica psiquiátrica personal">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#111113;--s1:#1c1c1f;--s2:#242428;--s3:#2e2e33;--s4:#38383f;
+  --b1:rgba(255,255,255,0.06);--b2:rgba(255,255,255,0.10);--b3:rgba(255,255,255,0.18);
+  --t1:#f2f2f4;--t2:#9898a6;--t3:#4e4e5a;
+  --accent:#7c6af7;--accent2:#9d8fff;--adim:rgba(124,106,247,0.14);--adim2:rgba(124,106,247,0.24);
+  --green:#34d399;--green-bg:rgba(52,211,153,0.10);
+  --amber:#fbbf24;--amber-bg:rgba(251,191,36,0.10);
+  --red:#f87171;--red-bg:rgba(248,113,113,0.10);
+  --blue:#60a5fa;--blue-bg:rgba(96,165,250,0.10);
+  --sans:'Syne',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
+  --nav-h:52px;--r:12px;--rs:7px;
+}
+:root.light{
+  --bg:#dfe0e8;--s1:#f2f2f7;--s2:#e8e8ef;--s3:#dcdce5;--s4:#c8c8d4;
+  --b1:rgba(0,0,0,0.08);--b2:rgba(0,0,0,0.13);--b3:rgba(0,0,0,0.22);
+  --t1:#0d0d10;--t2:#2e2e3a;--t3:#6e6e80;
+  --accent:#5046d4;--accent2:#6355e0;--adim:rgba(80,70,212,0.12);--adim2:rgba(80,70,212,0.22);
+  --green:#047857;--green-bg:rgba(4,120,87,0.10);
+  --amber:#92400e;--amber-bg:rgba(146,64,14,0.10);
+  --red:#b91c1c;--red-bg:rgba(185,28,28,0.10);
+  --blue:#1d4ed8;--blue-bg:rgba(29,78,216,0.10);
+}
+html,body{height:100%}
+body{font-family:var(--sans);background:var(--bg);color:var(--t1);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--s4);border-radius:4px}
+.hidden{display:none!important}
+#nav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);background:rgba(17,17,19,0.9);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;padding:0 18px;z-index:100}
+.nav-brand{font-size:16px;font-weight:700;letter-spacing:-0.03em;display:flex;align-items:center;gap:8px}
+.nav-brand-icon{width:28px;height:28px;background:var(--adim2);border:1px solid rgba(124,106,247,0.3);border-radius:7px;display:grid;place-items:center;font-size:14px}
+.nav-tabs{display:flex;gap:2px;background:var(--s2);border:1px solid var(--b2);border-radius:9px;padding:3px}
+.nav-tab{padding:6px 14px;border-radius:6px;font-family:var(--sans);font-size:12px;font-weight:500;color:var(--t3);cursor:pointer;transition:color 0.15s,background 0.15s;user-select:none;white-space:nowrap;border:none;background:none}
+.nav-tab.active{background:var(--s4);color:var(--t1)}.nav-tab:hover:not(.active){color:var(--t2)}
+.nav-right{display:flex;align-items:center;gap:8px}
+#sync-indicator{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--t3)}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--t3);flex-shrink:0}
+.sync-dot.ok{background:var(--green);animation:pulse 2.5s ease-in-out infinite}
+.sync-dot.draft{background:var(--amber)}.sync-dot.offline{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+#app{padding-top:var(--nav-h);min-height:100vh}
+.tab-panel{display:none}.tab-panel.active{display:block;animation:fadeUp 0.22s cubic-bezier(0.16,1,0.3,1) both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.card{background:var(--s1);border:1px solid var(--b2);border-radius:var(--r);box-shadow:0 2px 12px rgba(0,0,0,0.25),0 1px 3px rgba(0,0,0,0.2)}
+.card-section{padding:16px 18px}.card-section+.card-section{border-top:1px solid var(--b1)}
+.section-label{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px}
+.field{margin-bottom:14px}.field:last-child{margin-bottom:0}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--t2);margin-bottom:6px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.field-row{grid-template-columns:1fr}}
+input[type="text"],input[type="email"],input[type="password"],input[type="datetime-local"],input[type="search"],select,textarea{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:var(--rs);padding:10px 12px;font-family:var(--sans);font-size:13px;color:var(--t1);outline:none;transition:border-color 0.15s,box-shadow 0.15s;-webkit-appearance:none}
+input::placeholder,textarea::placeholder{color:var(--t3)}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--adim)}
+textarea{resize:vertical;line-height:1.65}select{cursor:pointer}select option{background:var(--s2)}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:var(--rs);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:opacity 0.15s,transform 0.1s;white-space:nowrap;user-select:none}
+.btn:hover{opacity:0.85}.btn:active{transform:scale(0.98)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-ghost{background:var(--s3);border:1px solid var(--b2);color:var(--t2)}.btn-ghost:hover{color:var(--t1);opacity:1;background:var(--s4)}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,0.2)}
+.btn-sm{padding:6px 11px;font-size:12px}.btn-xs{padding:4px 9px;font-size:11px}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid transparent}
+.badge-gray{background:var(--s3);color:var(--t2);border-color:var(--b2)}
+.badge-green{background:var(--green-bg);color:var(--green);border-color:rgba(52,211,153,0.2)}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border-color:rgba(251,191,36,0.2)}
+.badge-red{background:var(--red-bg);color:var(--red);border-color:rgba(248,113,113,0.2)}
+.badge-accent{background:var(--adim2);color:var(--accent2);border-color:rgba(124,106,247,0.25)}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:5px;font-family:var(--mono);font-size:11px}
+.tag-diag{background:var(--adim);color:var(--accent2)}.tag-med{background:var(--amber-bg);color:var(--amber)}
+.tag-alert{background:var(--red-bg);color:var(--red)}.tag-note{background:var(--s3);color:var(--t2)}
+.tag-x{cursor:pointer;opacity:.5;font-size:13px;line-height:1;transition:opacity .15s}.tag-x:hover{opacity:1}
+.empty-state{text-align:center;padding:56px 24px;color:var(--t3)}
+.empty-icon{font-size:38px;margin-bottom:14px}
+.empty-state h3{font-size:15px;font-weight:600;color:var(--t2);margin-bottom:6px}
+.empty-state p{font-size:13px;line-height:1.6;max-width:260px;margin:0 auto 18px}
+#toast-wrap{position:fixed;bottom:20px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.toast{background:var(--s3);border:1px solid var(--b3);border-radius:10px;padding:11px 15px;font-size:13px;color:var(--t1);box-shadow:0 8px 24px rgba(0,0,0,0.4);display:flex;align-items:center;gap:8px;max-width:300px;animation:toastIn 0.28s cubic-bezier(0.16,1,0.3,1) both}
+.toast.out{animation:toastOut 0.22s ease both}
+@keyframes toastIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:translateX(0)}}
+@keyframes toastOut{to{opacity:0;transform:translateX(14px)}}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--s1);border:1px solid var(--b2);border-radius:16px;box-shadow:0 32px 64px rgba(0,0,0,0.5);width:min(500px,100%);animation:modalIn 0.28s cubic-bezier(0.16,1,0.3,1) both;max-height:90vh;overflow-y:auto}
+@keyframes modalIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
+.modal-header{padding:20px 22px 16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--s1);z-index:1}
+.modal-title{font-size:16px;font-weight:600;letter-spacing:-0.02em}
+.modal-close{width:28px;height:28px;border-radius:6px;background:var(--s3);border:none;color:var(--t2);font-size:18px;cursor:pointer;display:grid;place-items:center;transition:background 0.15s;line-height:1}
+.modal-close:hover{background:var(--s4);color:var(--t1)}
+.modal-body{padding:20px 22px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--b1);display:flex;justify-content:flex-end;gap:8px}
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:14px}
+.loader-logo{font-size:26px;font-weight:700;letter-spacing:-0.04em}
+.loader-bar{width:110px;height:2px;background:var(--s3);border-radius:2px;overflow:hidden}
+.loader-fill{height:100%;background:var(--accent);border-radius:2px;animation:load 1s cubic-bezier(0.4,0,0.2,1) forwards}
+@keyframes load{from{width:0}to{width:100%}}
+#loading.out{animation:fadeOut 0.25s ease forwards;pointer-events:none}
+@keyframes fadeOut{to{opacity:0}}
+.page-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px}
+.page-title{font-size:20px;font-weight:700;letter-spacing:-0.03em}
+.page-sub{font-size:13px;color:var(--t2);margin-top:2px}
+.search-row{position:relative;margin-bottom:12px}
+.search-row svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--t3);pointer-events:none}
+.search-row input{padding-left:34px}
+#patient-list{display:flex;flex-direction:column;gap:8px}
+.pt-card{display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;transition:border-color 0.15s,background 0.15s}
+.pt-card:hover{background:var(--s2);border-color:var(--b3)}
+.pt-card:hover .pt-edit-btn{opacity:1}
+.pt-edit-btn{opacity:0;transition:opacity 0.15s;padding:3px 9px;border-radius:5px;font-size:11px;font-weight:500;font-family:var(--sans);border:1px solid var(--b2);background:var(--s3);color:var(--t2);cursor:pointer;flex-shrink:0;white-space:nowrap}
+.pt-edit-btn:hover{background:var(--s4);color:var(--t1)}
+/* Med summary in detail */
+.med-summary{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.med-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:6px;font-size:12px;font-family:var(--mono);background:var(--amber-bg);color:var(--amber);border:1px solid rgba(251,191,36,0.2)}
+.med-source{font-size:11px;color:var(--t3);margin-top:6px;font-family:var(--mono)}
+/* Quick notes saved indicator */
+.qnotes-saved{font-size:11px;color:var(--green);font-family:var(--mono);opacity:0;transition:opacity 0.3s}
+.qnotes-saved.show{opacity:1}
+/* Error banner */
+.error-banner{background:var(--red-bg);border:1px solid rgba(248,113,113,0.25);border-radius:var(--rs);padding:12px 16px;font-size:13px;color:var(--red);display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.error-banner svg{flex-shrink:0}
+.pt-evol-count{font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:3px;display:flex;align-items:center;gap:4px}
+.pt-evol-count span{background:var(--s3);border:1px solid var(--b2);border-radius:4px;padding:1px 6px;color:var(--t2);font-weight:500}
+.pt-avatar{width:38px;height:38px;border-radius:10px;background:var(--adim);border:1px solid rgba(124,106,247,0.2);display:grid;place-items:center;font-size:14px;font-weight:700;color:var(--accent2);flex-shrink:0;font-family:var(--mono)}
+.pt-info{flex:1;min-width:0}
+.pt-name{font-size:14px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.pt-time{font-size:11px;color:var(--t3);font-family:var(--mono);white-space:nowrap;flex-shrink:0}
+.pt-chevron{color:var(--t3);font-size:18px;flex-shrink:0}
+/* Sort bar */
+.sort-bar{display:flex;align-items:center;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.sort-label{font-size:11px;color:var(--t3);font-family:var(--mono);margin-right:2px}
+.sort-btn{padding:4px 11px;border-radius:20px;font-size:11px;font-weight:500;font-family:var(--sans);border:1px solid var(--b2);background:transparent;color:var(--t3);cursor:pointer;transition:all 0.15s;display:flex;align-items:center;gap:4px}
+.sort-btn.active{background:var(--s3);color:var(--t1);border-color:var(--b3)}
+.sort-btn:hover:not(.active){color:var(--t2)}
+.sort-dir{font-size:10px;opacity:.7}
+/* Skeleton */
+.skeleton{background:linear-gradient(90deg,var(--s2) 25%,var(--s3) 50%,var(--s2) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:6px}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sk-card{display:flex;align-items:center;gap:14px;padding:14px 16px}
+.sk-avatar{width:38px;height:38px;border-radius:10px;flex-shrink:0}
+.sk-lines{flex:1;display:flex;flex-direction:column;gap:7px}
+.sk-line{height:10px;border-radius:4px}
+.sk-line.w60{width:60%}.sk-line.w40{width:40%}.sk-line.w30{width:30%}
+#patient-detail{display:none;padding:18px 18px 60px;max-width:860px;margin:0 auto}
+#patient-detail.open{display:block;animation:fadeUp 0.22s cubic-bezier(0.16,1,0.3,1) both}
+.back-btn{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;color:var(--t2);cursor:pointer;padding:6px 0;margin-bottom:14px;background:none;border:none;font-family:var(--sans);transition:color 0.15s}
+.back-btn:hover{color:var(--t1)}
+.detail-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.detail-name{font-size:22px;font-weight:700;letter-spacing:-0.03em;margin-bottom:8px}
+.detail-actions{display:flex;gap:7px;flex-shrink:0}
+.timeline-header{display:flex;align-items:center;justify-content:space-between;margin:16px 0 10px;flex-wrap:wrap;gap:8px}
+.date-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.date-filter-row label{font-size:11px;color:var(--t3);font-family:var(--mono)}
+.date-filter-row input[type=date]{width:auto;padding:5px 9px;font-size:12px}
+.date-filter-clear{font-size:11px;color:var(--accent2);cursor:pointer;background:none;border:none;font-family:var(--sans);padding:4px 6px;border-radius:4px}
+.date-filter-clear:hover{background:var(--adim)}
+.timeline-count{font-size:13px;font-weight:500;color:var(--t2)}
+.filter-chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;font-family:var(--sans);border:1px solid var(--b2);background:transparent;color:var(--t3);cursor:pointer;transition:all 0.15s}
+.chip.active{background:var(--s3);color:var(--t1);border-color:var(--b3)}
+#evol-timeline{display:flex;flex-direction:column;gap:10px}
+.evol-card{transition:border-color 0.15s}.evol-card:hover{border-color:var(--b3)}
+.evol-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.evol-pill{font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:0.05em;font-family:var(--mono)}
+.pill-guardia{background:var(--amber-bg);color:var(--amber)}
+.pill-internacion{background:var(--adim2);color:var(--accent2)}
+.pill-consultorios{background:var(--blue-bg);color:var(--blue)}
+.evol-datetime{font-family:var(--mono);font-size:11px;color:var(--t3)}
+.evol-body{font-size:13px;color:var(--t2);line-height:1.7}
+.evol-body strong{color:var(--t1);font-weight:600}
+.evol-body p{margin-bottom:5px}.evol-body p:last-child{margin-bottom:0}
+.evol-tags-row{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;padding-top:10px;border-top:1px solid var(--b1)}
+.evol-actions{display:flex;gap:6px;justify-content:flex-end;margin-top:10px;padding-top:10px;border-top:1px solid var(--b1);opacity:0;transition:opacity 0.15s}
+.evol-card:hover .evol-actions{opacity:1}
+.evol-act-btn{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:500;font-family:var(--sans);border:1px solid var(--b2);background:transparent;color:var(--t3);cursor:pointer;transition:all 0.15s}
+.evol-act-btn:hover{background:var(--s3);color:var(--t1)}
+.evol-act-btn.del:hover{background:var(--red-bg);color:var(--red);border-color:rgba(248,113,113,0.25)}
+.evol-act-btn.dup:hover{background:var(--adim);color:var(--accent2);border-color:rgba(124,106,247,0.25)}
+#tab-evolucion.active{padding:18px 18px 60px;display:grid;grid-template-columns:1fr 228px;gap:14px;max-width:980px;margin:0 auto}
+@media(max-width:700px){#tab-evolucion.active{grid-template-columns:1fr}#evol-sidebar{display:none}}
+.evol-main{display:flex;flex-direction:column;gap:12px}
+.type-chips{display:flex;gap:6px;flex-wrap:wrap}
+.type-chip{padding:7px 16px;border-radius:var(--rs);font-family:var(--sans);font-size:12px;font-weight:500;border:1px solid var(--b2);background:var(--s2);color:var(--t2);cursor:pointer;transition:all 0.15s}
+.type-chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.type-chip:hover:not(.active){color:var(--t1);border-color:var(--b3)}
+.tpl-field-label{font-family:var(--mono);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);display:block}
+.tpl-trigger{padding:3px 8px;border-radius:4px;font-size:10px;font-weight:500;font-family:var(--mono);background:var(--s3);border:1px solid var(--b2);color:var(--t3);cursor:pointer;transition:all 0.15s}
+.tpl-trigger:hover{background:var(--s4);color:var(--t2)}
+.tag-type-row{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap}
+.tag-type-btn{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:500;font-family:var(--sans);border:1px solid var(--b2);background:transparent;cursor:pointer;transition:all 0.15s;color:var(--t3)}
+.tag-type-btn[data-t="diag"].on{background:var(--adim);color:var(--accent2);border-color:rgba(124,106,247,0.25)}
+.tag-type-btn[data-t="med"].on{background:var(--amber-bg);color:var(--amber);border-color:rgba(251,191,36,0.2)}
+.tag-type-btn[data-t="alert"].on{background:var(--red-bg);color:var(--red);border-color:rgba(248,113,113,0.2)}
+.tag-type-btn[data-t="note"].on{background:var(--s3);color:var(--t2);border-color:var(--b2)}
+.tags-wrap{background:var(--s2);border:1px solid var(--b2);border-radius:var(--rs);padding:8px 10px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-height:44px;cursor:text;transition:border-color 0.15s,box-shadow 0.15s}
+.tags-wrap:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--adim)}
+.tags-wrap input{border:none;background:transparent;box-shadow:none!important;padding:2px 4px;font-size:12px;flex:1;min-width:90px;width:auto}
+.submit-bar{display:flex;align-items:center;justify-content:space-between;padding:13px 18px}
+.draft-note{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:6px;font-family:var(--mono)}
+#evol-sidebar{display:flex;flex-direction:column;gap:12px;position:sticky;top:calc(var(--nav-h) + 18px);height:fit-content;max-height:calc(100vh - var(--nav-h) - 36px);overflow-y:auto}
+.sb-title{font-family:var(--mono);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.1em;color:var(--t3);margin-bottom:10px}
+.sb-recent{padding:8px 9px;border-radius:7px;cursor:pointer;transition:background 0.15s;margin-bottom:2px}
+.sb-recent:hover{background:var(--s2)}
+.sb-recent-name{font-size:13px;font-weight:500}.sb-recent-sub{font-size:11px;color:var(--t3);font-family:var(--mono);margin-top:1px}
+.cie-grid{display:flex;flex-wrap:wrap;gap:4px}
+.cie-chip{font-family:var(--mono);font-size:10px;padding:3px 7px;border-radius:5px;background:var(--adim);color:var(--accent2);cursor:pointer;transition:background 0.15s;position:relative}
+.cie-chip:hover{background:var(--adim2)}
+.cie-chip .cie-name{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--s4);color:var(--t1);font-family:var(--sans);font-size:11px;font-weight:500;padding:5px 9px;border-radius:6px;white-space:nowrap;z-index:10;border:1px solid var(--b3);pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.cie-chip:hover .cie-name{display:block}
+.shortcut-list{display:flex;flex-direction:column;gap:6px}
+.sc-row{display:flex;align-items:center;justify-content:space-between}
+.sc-label{font-size:12px;color:var(--t2)}
+/* Help button */
+
+/* Tutorial — 4-curtain overlay */
+#tutorial-overlay{position:fixed;inset:0;z-index:500;display:none;pointer-events:none}
+#tutorial-overlay.active{display:block;pointer-events:all}
+.tut-curtain{position:fixed;background:rgba(0,0,0,0.76);transition:all 0.28s cubic-bezier(0.16,1,0.3,1)}
+#tut-top   {top:0;left:0;right:0}
+#tut-bottom{bottom:0;left:0;right:0}
+#tut-left  {left:0}
+#tut-right {right:0}
+#tut-frame {position:fixed;border:2px solid var(--accent);border-radius:8px;pointer-events:none;z-index:502;transition:all 0.28s cubic-bezier(0.16,1,0.3,1);box-shadow:0 0 0 2px rgba(124,106,247,0.25)}
+#tutorial-tooltip{
+  position:fixed;z-index:503;
+  background:var(--s1);border:1px solid var(--b3);border-radius:14px;
+  box-shadow:0 24px 48px rgba(0,0,0,0.55);
+  width:min(300px,86vw);
+  pointer-events:all;
+  display:flex;flex-direction:column;
+  overflow:hidden;
+}
+.tut-scrollable{padding:18px 20px 0;overflow-y:auto;flex:1;min-height:0}
+.tut-footer{
+  padding:12px 20px 14px;
+  border-top:1px solid var(--b1);
+  flex-shrink:0;
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--s1);
+  position:sticky;bottom:0;
+}
+.tut-step-label{font-family:var(--mono);font-size:10px;color:var(--accent2);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px}
+.tut-title{font-size:15px;font-weight:700;letter-spacing:-0.02em;margin-bottom:8px}
+.tut-body{font-size:13px;color:var(--t2);line-height:1.65;margin-bottom:16px}
+.tut-dots{display:flex;gap:5px}
+.tut-dot{width:6px;height:6px;border-radius:50%;background:var(--s4);transition:background 0.2s}
+.tut-dot.active{background:var(--accent)}
+.tut-nav{display:flex;gap:8px}
+/* Shortcuts modal */
+
+kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;background:var(--s3);color:var(--t3);border:1px solid var(--b2)}
+#tab-busqueda{padding:18px 18px 60px;max-width:860px;margin:0 auto}
+.search-big{position:relative;margin-bottom:14px}
+.search-big svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--t3);pointer-events:none}
+.search-big input{padding:13px 14px 13px 42px;font-size:15px;border-radius:10px}
+.sf-chips{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.sf-chip{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500;font-family:var(--sans);border:1px solid var(--b2);background:transparent;color:var(--t3);cursor:pointer;transition:all 0.15s}
+.sf-chip.active{background:var(--s3);color:var(--t1);border-color:var(--b3)}
+.sf-chip[data-sf="diag"].active  { background:var(--adim);     color:var(--accent2); border-color:rgba(124,106,247,0.3); }
+.sf-chip[data-sf="med"].active   { background:var(--amber-bg); color:var(--amber);   border-color:rgba(251,191,36,0.25); }
+.sf-chip[data-sf="alert"].active { background:var(--red-bg);   color:var(--red);     border-color:rgba(248,113,113,0.25); }
+.sf-chip[data-sf="note"].active  { background:var(--s3);       color:var(--t2);      border-color:var(--b3); }
+.sf-divider{width:1px;height:16px;background:var(--b2);align-self:center;flex-shrink:0}
+.sr-count{font-size:12px;color:var(--t3);font-family:var(--mono);margin-bottom:10px}
+.tag-clickable{cursor:pointer;transition:opacity 0.15s}.tag-clickable:hover{opacity:0.75}
+#search-results{display:flex;flex-direction:column;gap:8px}
+.sr-card{cursor:pointer;transition:border-color 0.15s,background 0.15s}
+.sr-card:hover{border-color:var(--b3);background:var(--s2)}
+.sr-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.sr-patient{font-size:13px;font-weight:600}.sr-date{font-family:var(--mono);font-size:11px;color:var(--t3)}
+.sr-excerpt{font-size:13px;color:var(--t2);line-height:1.65}
+.sr-excerpt mark{background:var(--adim2);color:var(--accent2);border-radius:2px;padding:0 2px}
+#tab-config{padding:18px 18px 60px;max-width:600px;margin:0 auto}
+.cfg-section{margin-bottom:12px}
+/* Accordion */
+.acc-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;user-select:none;border-radius:var(--r);background:var(--s1);border:1px solid var(--b2);transition:background 0.15s}
+.acc-header:hover{background:var(--s2)}
+.acc-title{font-size:11px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:0.08em;font-family:var(--mono);display:flex;align-items:center;gap:8px}
+.acc-arrow{font-size:12px;color:var(--t3);transition:transform 0.2s}
+.acc-body{overflow:hidden;max-height:0;transition:max-height 0.28s cubic-bezier(0.16,1,0.3,1)}
+.acc-body.open{max-height:2000px}
+.acc-body .card{border-top-left-radius:0;border-top-right-radius:0;border-top:none}
+.acc-body .btn{margin-top:8px}
+.acc-header.open{border-bottom-left-radius:0;border-bottom-right-radius:0}
+/* Situation filter chips */
+.sit-chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
+.sit-chip{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500;font-family:var(--sans);border:1px solid var(--b2);background:transparent;color:var(--t3);cursor:pointer;transition:all 0.15s}
+.sit-chip.active{background:var(--s3);color:var(--t1);border-color:var(--b3)}
+.sit-chip[data-sit="Internado"].active{background:var(--green-bg);color:var(--green);border-color:rgba(52,211,153,0.25)}
+.sit-chip[data-sit="Ambulatorio"].active{background:var(--adim);color:var(--accent2);border-color:rgba(124,106,247,0.25)}
+.sit-chip[data-sit="Guardia"].active{background:var(--amber-bg);color:var(--amber);border-color:rgba(251,191,36,0.2)}
+.sit-chip[data-sit="Alta"].active{background:var(--s3);color:var(--t2);border-color:var(--b3)}
+
+/* Mobile-friendly edit btn */
+@media(hover:none){.pt-edit-btn{opacity:1!important;background:transparent;border-color:transparent;color:var(--t3)}}
+/* Dynamic draft note */
+.draft-note{font-size:11px;color:var(--t3);display:flex;align-items:center;gap:6px;font-family:var(--mono);transition:opacity 0.3s}
+.draft-note.hidden{opacity:0;pointer-events:none}
+.cfg-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;gap:12px}
+.cfg-row+.cfg-row{border-top:1px solid var(--b1)}
+.cfg-label{font-size:14px;font-weight:500}.cfg-sub{font-size:12px;color:var(--t3);margin-top:2px}
+.tpl-list{display:flex;flex-direction:column;gap:6px}
+.tpl-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--rs)}
+.tpl-item-info{flex:1;min-width:0}.tpl-item-name{font-size:13px;font-weight:500}
+.tpl-item-field{font-size:11px;color:var(--t3);font-family:var(--mono);margin-top:2px}
+.tpl-item-actions{display:flex;gap:5px;flex-shrink:0}
+.tpl-picker{position:fixed;z-index:300;background:var(--s1);border:1px solid var(--b3);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,0.5);width:280px;max-height:320px;overflow-y:auto;animation:fadeUp 0.18s cubic-bezier(0.16,1,0.3,1) both}
+.tpl-picker-header{padding:10px 14px 8px;border-bottom:1px solid var(--b1);font-size:11px;font-weight:500;color:var(--t3);font-family:var(--mono);text-transform:uppercase;letter-spacing:0.08em}
+.tpl-picker-item{padding:10px 14px;cursor:pointer;transition:background 0.12s;border-bottom:1px solid var(--b1)}
+.tpl-picker-item:last-child{border-bottom:none}.tpl-picker-item:hover{background:var(--s2)}
+.tpl-picker-name{font-size:13px;font-weight:500;color:var(--t1)}
+.tpl-picker-empty{padding:20px 14px;text-align:center;font-size:12px;color:var(--t3)}
+.theme-btn{width:30px;height:30px;border-radius:8px;background:var(--s3);border:1px solid var(--b2);color:var(--t2);font-size:15px;cursor:pointer;display:grid;place-items:center;transition:background 0.15s,color 0.15s;flex-shrink:0}
+.theme-btn:hover{background:var(--s4);color:var(--t1)}
+.spinner{width:13px;height:13px;border:2px solid var(--b2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.65s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── PRINT STYLES ─────────────────────────────────────── */
+@media print {
+  #nav,#mobile-nav,#loading,#toast-wrap,
+  .modal-overlay,.tut-curtain,#tutorial-overlay,
+  .detail-actions,.evol-actions,.back-btn,
+  .filter-chips,.date-filter-row,.sort-bar,.sit-chips,
+  .btn-new-patient,.page-header button,
+  #evol-sidebar,#btn-new-patient,
+  .pt-edit-btn,.pt-chevron,.pt-time { display:none!important; }
+
+  * { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body { background:#fff!important; color:#000!important; font-size:11pt; }
+  #app { padding-top:0!important; }
+
+  .card { border:1px solid #ccc!important; box-shadow:none!important; background:#fff!important; break-inside:avoid; margin-bottom:8pt; }
+  .card-section { padding:8pt 10pt!important; }
+
+  #patient-detail { display:block!important; padding:0!important; }
+  #patient-list-view { display:none!important; }
+
+  .detail-name { font-size:16pt!important; font-weight:700!important; color:#000!important; }
+  .badge { border:1px solid #999!important; color:#000!important; background:#f5f5f5!important; }
+
+  .evol-pill { border:1px solid #000!important; background:#eee!important; color:#000!important; }
+  .evol-datetime { color:#555!important; }
+  .evol-body, .evol-body strong { color:#000!important; }
+  .evol-body strong { font-weight:700!important; }
+  .tag { border:1px solid #999!important; background:#f0f0f0!important; color:#000!important; }
+
+  .section-label { color:#444!important; }
+  .med-pill { background:#f0f0f0!important; color:#000!important; border:1px solid #aaa!important; }
+
+  .timeline-header { display:none!important; }
+  #evol-count-label { display:none!important; }
+
+  @page { margin:1.5cm 2cm; }
+}
+@media(max-width:600px){
+  .nav-tabs{display:none}
+  #mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:rgba(28,28,31,0.95);backdrop-filter:blur(12px);border-top:1px solid var(--b2);z-index:100;padding:8px 0 env(safe-area-inset-bottom,8px)}
+  .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px;cursor:pointer;font-size:10px;color:var(--t3);transition:color 0.15s;background:none;border:none;font-family:var(--sans)}
+  .mob-tab.active{color:var(--accent2)}.mob-tab svg{width:20px;height:20px}
+  #app{padding-bottom:70px}
+}
+@media(min-width:601px){#mobile-nav{display:none}}
+</style>
+</head>
+<body>
+<div id="loading"><div class="loader-logo">PsiqRex</div><div class="loader-bar"><div class="loader-fill"></div></div></div>
+<nav id="nav">
+  <div class="nav-brand"><div class="nav-brand-icon">&#x1F9E0;</div>PsiqRex</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" data-tab="pacientes">Pacientes</button>
+    <button class="nav-tab" data-tab="evolucion">Nueva evoluci&#xF3;n</button>
+    <button class="nav-tab" data-tab="busqueda">B&#xFA;squeda</button>
+    <button class="nav-tab" data-tab="config">Config</button>
+  </div>
+  <div class="nav-right"><div id="sync-indicator"><div class="sync-dot" id="sync-dot"></div><span id="sync-label"></span></div><button class="theme-btn" id="btn-theme" title="Cambiar tema">&#x263D;</button></div>
+</nav>
+<div id="app">
+  <div class="tab-panel active" id="tab-pacientes">
+    <div id="patient-list-view" style="padding:18px 18px 40px;max-width:860px;margin:0 auto">
+      <div class="page-header">
+        <div><div class="page-title">Pacientes</div><div class="page-sub" id="pt-count-label"></div></div>
+        <button class="btn btn-primary" id="btn-new-patient">+ Nuevo paciente</button>
+      </div>
+      <div class="search-row">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        <input type="search" id="search-patients" placeholder="Buscar por nombre, diagn&#xF3;stico...">
+      </div>
+      <div class="sort-bar">
+        <span class="sort-label">Ordenar:</span>
+        <button class="sort-btn active" data-sort="updated">Recientes</button>
+        <button class="sort-btn" data-sort="name">A&#x2013;Z</button>
+        <button class="sort-btn" data-sort="evols">Evoluciones</button>
+      </div>
+      <div class="sit-chips" id="sit-chips">
+        <button class="sit-chip active" data-sit="">Todos</button>
+        <button class="sit-chip" data-sit="Internado">Internados</button>
+        <button class="sit-chip" data-sit="Ambulatorio">Ambulatorios</button>
+        <button class="sit-chip" data-sit="Guardia">Guardia</button>
+        <button class="sit-chip" data-sit="Alta">Alta</button>
+      </div>
+      <div id="patient-list"></div>
+    </div>
+    <div id="patient-detail">
+      <button class="back-btn" id="btn-back-patients">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Pacientes
+      </button>
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-section">
+          <div class="detail-header">
+            <div><div class="detail-name" id="detail-name"></div><div id="detail-badges" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>
+            <div class="detail-actions">
+              <button class="btn btn-ghost btn-sm" id="btn-edit-patient">Editar</button>
+              <button class="btn btn-danger btn-sm" id="btn-delete-patient">Eliminar</button>
+              <button class="btn btn-ghost btn-sm" id="btn-pdf"><span id="pdf-label">&#x2193; PDF</span></button>
+              <button class="btn btn-primary btn-sm" id="btn-new-evol-from-detail">+ Evoluci&#xF3;n</button>
+            </div>
+          </div>
+        </div>
+        <div class="card-section" id="detail-notes-section" style="display:none">
+          <div class="section-label">Notas</div>
+          <div id="detail-notes" style="font-size:13px;color:var(--t2);line-height:1.7"></div>
+        </div>
+        <div class="card-section" id="detail-med-section" style="display:none">
+          <div class="section-label">Medicación actual</div>
+          <div class="med-summary" id="detail-med-list"></div>
+          <div class="med-source" id="detail-med-source"></div>
+        </div>
+        <div class="card-section" id="detail-qnotes-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div class="section-label" style="margin-bottom:0">Notas rápidas</div>
+            <span style="font-size:10px;color:var(--t3);font-family:var(--mono)">Solo visibles aquí</span>
+          </div>
+          <textarea id="detail-qnotes" rows="3" placeholder="Anotá cualquier cosa: llamó para cancelar, trajo resultados, recordatorio..." style="font-size:13px;line-height:1.6"></textarea>
+          <div style="display:flex;justify-content:flex-end;margin-top:6px">
+            <button class="btn btn-ghost btn-sm" id="btn-save-qnotes">Guardar nota</button>
+          </div>
+        </div>
+      </div>
+      <div class="date-filter-row" id="date-filter-row">
+        <label>Desde</label>
+        <input type="date" id="date-from">
+        <label>hasta</label>
+        <input type="date" id="date-to">
+        <button class="date-filter-clear" id="date-filter-clear">&#x2715; Limpiar</button>
+      </div>
+      <div class="timeline-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="timeline-count" id="evol-count-label"></div>
+          <button id="tl-sort-btn" class="btn btn-ghost btn-sm" style="padding:4px 9px;font-size:11px" title="Cambiar orden">&#x2193; Más recientes</button>
+        </div>
+        <div class="filter-chips" id="filter-chips">
+          <button class="chip active" data-filter="todas">Todas</button>
+          <button class="chip" data-filter="guardia">Guardia</button>
+          <button class="chip" data-filter="internacion">Internaci&#xF3;n</button>
+          <button class="chip" data-filter="consultorios">Consultorios</button>
+        </div>
+      </div>
+      <div id="evol-timeline"></div>
+    </div>
+  </div>
+  <div class="tab-panel" id="tab-evolucion">
+    <div class="evol-main">
+      <div class="card">
+        <div class="card-section">
+          <div class="section-label">Paciente y fecha</div>
+          <div class="field-row">
+            <div class="field"><label>Paciente</label><select id="evol-patient"></select></div>
+            <div class="field"><label>Fecha y hora</label><input type="datetime-local" id="evol-date"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-section">
+          <div class="section-label">Tipo de evoluci&#xF3;n</div>
+          <div class="type-chips">
+            <button class="type-chip active" data-tipo="guardia">Guardia</button>
+            <button class="type-chip" data-tipo="internacion">Internaci&#xF3;n</button>
+            <button class="type-chip" data-tipo="consultorios">Consultorios externos</button>
+          </div>
+        </div>
+        <div class="card-section" id="evol-fields"></div>
+      </div>
+      <div class="card">
+        <div class="card-section">
+          <div class="section-label">Tags</div>
+          <div class="tag-type-row" id="tag-type-row">
+            <button class="tag-type-btn on" data-t="diag">CIE-10 / Diagn&#xF3;stico</button>
+            <button class="tag-type-btn" data-t="med">Medicaci&#xF3;n</button>
+            <button class="tag-type-btn" data-t="alert">Alerta</button>
+            <button class="tag-type-btn" data-t="note">Nota</button>
+          </div>
+          <div class="tags-wrap" id="tags-wrap"><input id="tag-input" placeholder="Escribir tag y Enter..."></div>
+        </div>
+        <div class="submit-bar">
+          <div class="draft-note hidden" id="draft-note">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17,21 17,13 7,13 7,21"/><polyline points="7,3 7,8 15,8"/></svg>
+            <span id="draft-note-text">Borrador guardado</span>
+          </div>
+          <button class="btn btn-primary" id="btn-save-evol">Guardar evoluci&#xF3;n</button>
+        </div>
+      </div>
+    </div>
+    <div id="evol-sidebar">
+      <div class="card"><div class="card-section"><div class="sb-title">Recientes</div><div id="sb-recientes"></div></div></div>
+      <div class="card"><div class="card-section"><div class="sb-title">CIE-10 frecuentes</div><div class="cie-grid" id="cie-grid"></div></div></div>
+
+    </div>
+  </div>
+  <div class="tab-panel" id="tab-busqueda">
+    <div style="padding:18px 18px 60px;max-width:860px;margin:0 auto">
+    <div class="search-big">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="search" id="search-global" placeholder="Buscar en evoluciones, diagn&#xF3;sticos, medicaci&#xF3;n...">
+    </div>
+    <div class="sf-chips" id="sf-tipo-chips">
+      <button class="sf-chip active" data-sf="todo">Todo</button>
+      <button class="sf-chip" data-sf="guardia">Guardia</button>
+      <button class="sf-chip" data-sf="internacion">Internaci&#xF3;n</button>
+      <button class="sf-chip" data-sf="consultorios">Consultorios</button>
+      <div class="sf-divider"></div>
+      <button class="sf-chip" data-sf="diag">&#x1F3F7; CIE-10</button>
+      <button class="sf-chip" data-sf="med">&#x1F48A; Medicaci&#xF3;n</button>
+      <button class="sf-chip" data-sf="alert">&#x26A0; Alerta</button>
+      <button class="sf-chip" data-sf="note">&#x1F4DD; Nota</button>
+    </div>
+    <div class="sr-count hidden" id="sr-count"></div>
+    <div id="search-results">
+      <div class="empty-state"><div class="empty-icon">&#x1F50D;</div><h3>Busc&#xE1; cualquier cosa</h3><p>Diagn&#xF3;sticos, medicaci&#xF3;n, texto libre de evoluciones.</p></div>
+    </div>
+    </div>
+  </div>
+  <div class="tab-panel" id="tab-config">
+    <div style="padding:18px 18px 60px;max-width:600px;margin:0 auto">
+      <div class="page-title" style="margin-bottom:16px">Configuración</div>
+
+      <div class="cfg-section">
+        <div class="acc-header open" data-acc="tpl">
+          <span class="acc-title">&#x1F4CB; Plantillas de evolución</span>
+          <span class="acc-arrow">&#x25BE;</span>
+        </div>
+        <div class="acc-body open" id="acc-tpl">
+          <div class="card"><div class="card-section"><div class="tpl-list" id="template-list"></div></div></div>
+          <button class="btn btn-ghost btn-sm" id="btn-new-template">+ Nueva plantilla</button>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="acc-header" data-acc="db">
+          <span class="acc-title">&#x2601;&#xFE0F; Base de datos (Supabase)</span>
+          <span class="acc-arrow">&#x25BE;</span>
+        </div>
+        <div class="acc-body" id="acc-db">
+          <div class="card">
+            <div class="cfg-row"><div><div class="cfg-label">Supabase URL</div><div class="cfg-sub" id="cfg-url-label">No configurado</div></div><button class="btn btn-ghost btn-sm" id="btn-cfg-supabase">Configurar</button></div>
+            <div class="cfg-row"><div><div class="cfg-label">Anon Key</div><div class="cfg-sub" id="cfg-key-label">No configurado</div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="acc-header open" data-acc="data">
+          <span class="acc-title">&#x1F4BE; Datos locales</span>
+          <span class="acc-arrow">&#x25BE;</span>
+        </div>
+        <div class="acc-body open" id="acc-data">
+          <div class="card">
+            <div class="cfg-row"><div><div class="cfg-label">Pacientes</div><div class="cfg-sub" id="cfg-pt-count"></div></div></div>
+            <div class="cfg-row"><div><div class="cfg-label">Evoluciones</div><div class="cfg-sub" id="cfg-ev-count"></div></div></div>
+            <div class="cfg-row"><div><div class="cfg-label">Exportar backup</div><div class="cfg-sub">Copia JSON completa</div></div><button class="btn btn-ghost btn-sm" id="btn-export">Exportar JSON</button></div>
+            <div class="cfg-row"><div><div class="cfg-label">Exportar PDF completo</div><div class="cfg-sub">PDF de todos los pacientes</div></div><button class="btn btn-ghost btn-sm" id="btn-export-pdf-all"><span id="pdf-all-label">↓ PDF</span></button></div>
+            <div class="cfg-row"><div><div class="cfg-label">Importar backup</div><div class="cfg-sub">Restaurar desde JSON</div></div><button class="btn btn-ghost btn-sm" id="btn-import">Importar</button></div>
+            <div class="cfg-row"><div><div class="cfg-label" style="color:var(--red)">Borrar todo</div><div class="cfg-sub">Acción irreversible</div></div><button class="btn btn-danger btn-sm" id="btn-clear-all">Borrar todo</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="acc-header" data-acc="about">
+          <span class="acc-title">&#x2139;&#xFE0F; Acerca de</span>
+          <span class="acc-arrow">&#x25BE;</span>
+        </div>
+        <div class="acc-body" id="acc-about">
+          <div class="card">
+            <div class="cfg-row"><div><div class="cfg-label">PsiqRex</div><div class="cfg-sub">v3.0 · Residencia de psiquiatría · Uso personal</div></div></div>
+            <div class="cfg-row"><div><div class="cfg-label">Tutorial interactivo</div><div class="cfg-sub">Recorré las funciones paso a paso</div></div><button class="btn btn-ghost btn-sm" id="btn-start-tutorial">Ver tutorial</button></div>
+            <div class="cfg-row"><div><div class="cfg-label">Atajos de teclado</div><div class="cfg-sub">Ctrl / ⌘ + tecla</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="mobile-nav">
+  <button class="mob-tab active" data-tab="pacientes"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Pacientes</button>
+  <button class="mob-tab" data-tab="evolucion"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Evoluci&#xF3;n</button>
+  <button class="mob-tab" data-tab="busqueda"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>Buscar</button>
+  <button class="mob-tab" data-tab="config"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Config</button>
+</div>
+<div class="modal-overlay" id="modal-patient">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="modal-patient-title">Nuevo paciente</div><button class="modal-close" data-close="modal-patient">&#xD7;</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Nombre / identificaci&#xF3;n</label><input type="text" id="p-name" placeholder="Nombre completo, iniciales, c&#xF3;digo..."></div>
+      <div class="field-row">
+        <div class="field"><label>Sexo</label><select id="p-sex"><option value="">&#x2014;</option><option>Masculino</option><option>Femenino</option><option>No binario</option></select></div>
+        <div class="field"><label>Edad</label><input type="text" id="p-age" placeholder="Ej: 34"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Situaci&#xF3;n</label><select id="p-situation"><option value="">&#x2014;</option><option>Internado</option><option>Ambulatorio</option><option>Guardia</option><option>Alta</option></select></div>
+        <div class="field"><label>Servicio / sala</label><input type="text" id="p-ward" placeholder="Ej: Sala 3, Guardia..."></div>
+      </div>
+      <div class="field"><label>Alertas</label><input type="text" id="p-alerts" placeholder="Ej: Riesgo autol&#xED;tico, Sin red de apoyo..."></div>
+      <div class="field"><label>Notas clínicas</label><textarea id="p-notes" rows="3" placeholder="Contexto relevante, antecedentes..."></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" data-close="modal-patient">Cancelar</button><button class="btn btn-primary" id="btn-save-patient">Guardar</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-template">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="modal-tpl-title">Nueva plantilla</div><button class="modal-close" data-close="modal-template">&#xD7;</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Nombre de la plantilla</label><input type="text" id="tpl-name" placeholder="Ej: Psicosemiolog&#xED;a &#x2014; episodio depresivo"></div>
+      <div class="field"><label>Campo al que aplica</label>
+        <select id="tpl-field">
+          <option value="motivo">Motivo de consulta</option>
+          <option value="evolucion">Evoluci&#xF3;n</option>
+          <option value="psicosemiologia">Psicosemiolog&#xED;a</option>
+          <option value="diagnostico">Diagn&#xF3;stico</option>
+          <option value="plan">Plan / conducta</option>
+          <option value="medicacion">Medicaci&#xF3;n actual</option>
+          <option value="proximaCita">Pr&#xF3;xima cita</option>
+        </select>
+      </div>
+      <div class="field"><label>Texto de la plantilla</label><textarea id="tpl-text" rows="8" placeholder="Texto que se insertar&#xE1; en el campo..."></textarea></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" data-close="modal-template">Cancelar</button><button class="btn btn-primary" id="btn-save-template">Guardar</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-supabase">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title">Configurar Supabase</div><button class="modal-close" data-close="modal-supabase">&#xD7;</button></div>
+    <div class="modal-body">
+      <div style="background:var(--adim);border:1px solid rgba(124,106,247,0.2);border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--accent2);line-height:1.6">URL y anon key en tu proyecto Supabase &#x2192; Settings &#x2192; API. La seguridad real la provee Row Level Security.</div>
+      <div class="field"><label>Supabase URL</label><input type="text" id="cfg-url-input" placeholder="https://xxxx.supabase.co"></div>
+      <div class="field"><label>Anon Key</label><input type="text" id="cfg-key-input" placeholder="eyJhbGc..."></div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" data-close="modal-supabase">Cancelar</button><button class="btn btn-primary" id="btn-save-supabase">Guardar</button></div>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-confirm">
+  <div class="modal">
+    <div class="modal-header"><div class="modal-title" id="confirm-title">Confirmar</div><button class="modal-close" data-close="modal-confirm">&#xD7;</button></div>
+    <div class="modal-body"><p id="confirm-msg" style="font-size:14px;color:var(--t2);line-height:1.65"></p></div>
+    <div class="modal-footer"><button class="btn btn-ghost" data-close="modal-confirm">Cancelar</button><button class="btn btn-danger" id="confirm-ok">Confirmar</button></div>
+  </div>
+</div>
+<div id="toast-wrap"></div>
+
+<!-- TUTORIAL OVERLAY -->
+<div id="tutorial-overlay">
+  <div class="tut-curtain" id="tut-top"></div>
+  <div class="tut-curtain" id="tut-bottom"></div>
+  <div class="tut-curtain" id="tut-left"></div>
+  <div class="tut-curtain" id="tut-right"></div>
+  <div id="tut-frame"></div>
+  <div id="tutorial-tooltip">
+    <div class="tut-scrollable">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px">
+        <div class="tut-step-label" id="tut-step-label"></div>
+        <button id="tut-close" style="background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer;line-height:1;padding:0 0 0 8px;flex-shrink:0" title="Cerrar tutorial">×</button>
+      </div>
+      <div class="tut-title" id="tut-title"></div>
+      <div class="tut-body" id="tut-body"></div>
+    </div>
+    <div class="tut-footer">
+      <div class="tut-dots" id="tut-dots"></div>
+      <div class="tut-nav">
+        <button class="btn btn-ghost btn-sm" id="tut-prev" style="display:none">← Anterior</button>
+        <button class="btn btn-primary btn-sm" id="tut-next">Siguiente →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+'use strict';
+const FIELD_LABELS={motivo:'Motivo de consulta',evolucion:'Evoluci\u00f3n',psicosemiologia:'Psicosemiolog\u00eda',diagnostico:'Diagn\u00f3stico',plan:'Plan / conducta',medicacion:'Medicaci\u00f3n actual',proximaCita:'Pr\u00f3xima cita'};
+const FIELDS_ORDER=['motivo','evolucion','psicosemiologia','diagnostico','plan','medicacion','proximaCita'];
+const DIAG_LABEL={guardia:'Diagn\u00f3stico presuntivo',internacion:'Diagn\u00f3stico',consultorios:'Diagn\u00f3stico'};
+const TIPO_PRETTY={guardia:'Guardia',internacion:'Internaci\u00f3n',consultorios:'Consultorios ext.'};
+const PILL_CLASS={guardia:'pill-guardia',internacion:'pill-internacion',consultorios:'pill-consultorios'};
+const CIE10=[
+  {code:'F20.0',name:'Esquizofrenia paranoide'},
+  {code:'F20.3',name:'Esquizofrenia indiferenciada'},
+  {code:'F25.0',name:'T. esquizoafectivo man\u00edaco'},
+  {code:'F31.0',name:'T. bipolar, hipoman\u00eda'},
+  {code:'F31.1',name:'T. bipolar, man\u00eda sin ps\u00edcosis'},
+  {code:'F31.2',name:'T. bipolar, man\u00eda con ps\u00edcosis'},
+  {code:'F32.0',name:'Episodio depresivo leve'},
+  {code:'F32.1',name:'Episodio depresivo moderado'},
+  {code:'F32.2',name:'Episodio depresivo grave'},
+  {code:'F33.0',name:'T. depresivo recurrente, leve'},
+  {code:'F41.0',name:'T. de p\u00e1nico'},
+  {code:'F41.1',name:'T. de ansiedad generalizada'},
+  {code:'F43.1',name:'T. de estr\u00e9s postraum\u00e1tico'},
+  {code:'F60.3',name:'T. l\u00edmite de personalidad'},
+  {code:'F60.6',name:'T. ansioso de personalidad'},
+  {code:'F10.2',name:'Dependencia de alcohol'},
+  {code:'F11.2',name:'Dependencia de opioides'},
+  {code:'F19.1',name:'Uso nocivo, varias sustancias'},
+];
+const DEFAULT_TEMPLATES=[
+  {id:'dt1',name:'Psicosemiolog\u00eda normal',field:'psicosemiologia',builtin:true,text:'Paciente vigil, l\u00facido, orientado en tiempo, espacio y persona. Actitud colaboradora. Contacto adecuado. Psicomotricidad conservada, sin agitaci\u00f3n ni inhibici\u00f3n. Afecto eut\u00edmico, reactivo, congruente con el discurso. Discurso fluido, coherente, sin alteraciones formales del pensamiento. Sin alteraciones en el contenido del pensamiento. Juicio conservado. Cr\u00edtica de enfermedad presente. Niega ideaci\u00f3n suicida u homicida. Sin alteraciones sensoperceptivas en el momento de la entrevista. Memoria e inteligencia aparentemente conservadas.'},
+  {id:'dt2',name:'Psicosemiolog\u00eda \u2014 crisis de angustia',field:'psicosemiologia',builtin:true,text:'Paciente vigil, orientado. Se presenta angustiado, con tensi\u00f3n ps\u00edquica marcada. Refiere episodio de inicio agudo con palpitaciones, disnea, sensaci\u00f3n de muerte inminente y parestesias acras. Afecto ansioso, congruente con el relato. Pensamiento acelerado con contenido catastr\u00f3fico. Sin alteraciones sensoperceptivas. Juicio conservado. Cr\u00edtica presente. Niega ideaci\u00f3n suicida. Sin s\u00edntomas disociativos.'},
+  {id:'dt3',name:'Psicosemiolog\u00eda \u2014 episodio depresivo',field:'psicosemiologia',builtin:true,text:'Paciente vigil, orientado. Actitud hipoprosexica, tendencia al llanto. Psicomotricidad inhibida. Afecto hipot\u00edmico, con anhedonia referida. Discurso enlentecido, tono mon\u00f3tono. Pensamiento con contenido depresivo: sentimientos de culpa, inutilidad y desesperanza. Alteraciones del sue\u00f1o y apetito referidas. Evaluar presencia de ideaci\u00f3n suicida: [completar]. Juicio conservado. Cr\u00edtica parcial.'},
+  {id:'dt4',name:'Psicosemiolog\u00eda \u2014 episodio man\u00edaco',field:'psicosemiologia',builtin:true,text:'Paciente vigil, orientado parcialmente. Actitud desinhibida, expansiva, con escasa conciencia de enfermedad. Psicomotricidad aumentada. Afecto hipert\u00edmico, euf\u00f3rico, l\u00e1bil. Discurso acelerado, con fuga de ideas. Pensamiento con ideas de grandiosidad. Juicio deteriorado. Cr\u00edtica ausente. Niega ideaci\u00f3n autol\u00edtica pero presenta conductas de riesgo. Sin alteraciones sensoperceptivas en el momento de la evaluaci\u00f3n.'},
+  {id:'dt5',name:'Psicosemiolog\u00eda \u2014 s\u00edndrome confusional',field:'psicosemiologia',builtin:true,text:'Paciente con compromiso fluctuante del nivel de conciencia. Desorientaci\u00f3n temporoespacial. Dificultad para mantener la atenci\u00f3n. Psicomotricidad variable, con per\u00edodos de agitaci\u00f3n y per\u00edodos de inhibici\u00f3n. Discurso disgregado, incoherente. Alucinaciones visuales referidas por la familia. Juicio deteriorado. Sin cr\u00edtica. Evaluar causa org\u00e1nica subyacente.'},
+  {id:'dt6',name:'Plan \u2014 internaci\u00f3n est\u00e1ndar',field:'plan',builtin:true,text:'Se decide continuar internaci\u00f3n para estabilizaci\u00f3n cl\u00ednica y ajuste farmacol\u00f3gico. Se solicita: [estudios complementarios]. Medicaci\u00f3n: [detallar esquema]. Se indica contenci\u00f3n verbal y ambiental. Se informa a familiar responsable. Se elevar\u00e1 a pase de guardia. Reevaluar en pr\u00f3ximo turno.'},
+];
+
+/* STATE */
+const STATE=(() => {
+  let _db=null,_cfg={},_tab='pacientes',_pid=null,_efilter='todas',_editPid=null,_editEid=null,_editTid=null;
+  let _evol={tipo:'guardia',tags:[],fields:{}},_tagType='diag',_gfilter='todo',_gTagFilter=null;
+  return {
+    get db(){return _db},set db(v){_db=v},
+    get config(){return _cfg},setConfig(k,v){_cfg[k]=v},
+    get currentTab(){return _tab},set currentTab(v){_tab=v},
+    get pid(){return _pid},set pid(v){_pid=v},
+    get evolFilter(){return _efilter},set evolFilter(v){_efilter=v},
+    get editPid(){return _editPid},set editPid(v){_editPid=v},
+    get editEid(){return _editEid},set editEid(v){_editEid=v},
+    get editTid(){return _editTid},set editTid(v){_editTid=v},
+    get evol(){return _evol},
+    resetEvol(){_evol={tipo:'guardia',tags:[],fields:{}};_editEid=null;},
+    get tagType(){return _tagType},set tagType(v){_tagType=v},
+    get gfilter(){return _gfilter},set gfilter(v){_gfilter=v},
+    get gTagFilter(){return _gTagFilter},set gTagFilter(v){_gTagFilter=v},
+  };
+})();
+
+/* DB */
+function initDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open('psiqrex_v2',1);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains('pacientes')) db.createObjectStore('pacientes',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('evoluciones')){
+        const es=db.createObjectStore('evoluciones',{keyPath:'id'});
+        es.createIndex('paciente_id','paciente_id');es.createIndex('fecha','fecha_evolucion');
+      }
+      if(!db.objectStoreNames.contains('config')) db.createObjectStore('config',{keyPath:'key'});
+      if(!db.objectStoreNames.contains('drafts')) db.createObjectStore('drafts',{keyPath:'key'});
+      if(!db.objectStoreNames.contains('templates')) db.createObjectStore('templates',{keyPath:'id'});
+    };
+    req.onsuccess=e=>res(e.target.result);
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+const db={
+  get(s,k){return new Promise((res,rej)=>{const r=STATE.db.transaction(s,'readonly').objectStore(s).get(k);r.onsuccess=()=>res(r.result??null);r.onerror=()=>rej(r.error);})},
+  put(s,v){return new Promise((res,rej)=>{const r=STATE.db.transaction(s,'readwrite').objectStore(s).put(v);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);})},
+  del(s,k){return new Promise((res,rej)=>{const r=STATE.db.transaction(s,'readwrite').objectStore(s).delete(k);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);})},
+  all(s){return new Promise((res,rej)=>{const r=STATE.db.transaction(s,'readonly').objectStore(s).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);})},
+  byIndex(s,idx,val){return new Promise((res,rej)=>{const r=STATE.db.transaction(s,'readonly').objectStore(s).index(idx).getAll(val);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);})},
+  clearAll(stores){return new Promise((res,rej)=>{const tx=STATE.db.transaction(stores,'readwrite');stores.forEach(s=>tx.objectStore(s).clear());tx.oncomplete=res;tx.onerror=()=>rej(tx.error);})},
+};
+
+/* HELPERS */
+const uuid=()=>crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&0x3|0x8)).toString(16);});
+const nowISO=()=>new Date().toISOString();
+const nowLocal=()=>{const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,16);};
+function formatDate(iso){if(!iso)return'\u2014';const d=new Date(iso);return d.toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'})+' \u00b7 '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});}
+function formatDateShort(iso){if(!iso)return'\u2014';return new Date(iso).toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'numeric'});}
+function relTime(iso){if(!iso)return'';const diff=Date.now()-new Date(iso).getTime();const m=Math.floor(diff/60000),h=Math.floor(diff/3600000),dy=Math.floor(diff/86400000);if(m<2)return'ahora';if(m<60)return'hace '+m+'m';if(h<24)return'hace '+h+'h';if(dy===1)return'ayer';if(dy<7)return'hace '+dy+'d';return formatDateShort(iso);}
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const escRx=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+function initials(name){return name.replace(/[^a-zA-Z\u00e1\u00e9\u00ed\u00f3\u00fa\u00c1\u00c9\u00cd\u00d3\u00da\u00f1\u00d10-9]/g,' ').split(' ').filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?';}
+
+/* TOAST */
+function toast(msg,type='ok',dur=3000){
+  const wrap=document.getElementById('toast-wrap');
+  const el=document.createElement('div');el.className='toast';
+  const colors={ok:['var(--green)','\u2713'],error:['var(--red)','\u2715'],info:['var(--accent2)','i']};
+  const[color,icon]=colors[type]||colors.ok;
+  el.innerHTML='<span style="color:'+color+';font-weight:600">'+icon+'</span>'+esc(msg);
+  wrap.appendChild(el);
+  setTimeout(()=>{el.classList.add('out');el.addEventListener('animationend',()=>el.remove());},dur);
+}
+
+/* MODAL */
+const openModal=id=>document.getElementById(id).classList.add('open');
+const closeModal=id=>document.getElementById(id).classList.remove('open');
+function showConfirm(title,msg,onOk){
+  document.getElementById('confirm-title').textContent=title;
+  document.getElementById('confirm-msg').textContent=msg;
+  document.getElementById('confirm-ok').onclick=()=>{closeModal('modal-confirm');onOk();};
+  openModal('modal-confirm');
+}
+document.querySelectorAll('[data-close]').forEach(btn=>btn.addEventListener('click',()=>closeModal(btn.dataset.close)));
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+
+/* ROUTER */
+async function switchTab(tab){
+  STATE.currentTab=tab;
+  document.querySelectorAll('.nav-tab,.mob-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
+  if(tab==='pacientes'){showPatientList();}
+  else if(tab==='evolucion'){await refreshEvolPatientSelect();await refreshSidebar();if(!document.getElementById('evol-date').value)document.getElementById('evol-date').value=nowLocal();}
+  else if(tab==='config'){await renderConfigStats();await renderTemplateList();}
+}
+document.querySelectorAll('.nav-tab,.mob-tab').forEach(btn=>btn.addEventListener('click',()=>switchTab(btn.dataset.tab)));
+
+/* SYNC */
+function setSyncStatus(s,l){document.getElementById('sync-dot').className='sync-dot '+(s||'');document.getElementById('sync-label').textContent=l||'';}
+function updateSyncIndicator(){if(!navigator.onLine){setSyncStatus('offline','Sin conexi\u00f3n');return;}if(STATE.config.supabaseUrl){setSyncStatus('ok','Supabase');return;}setSyncStatus('','');}
+window.addEventListener('online',updateSyncIndicator);window.addEventListener('offline',updateSyncIndicator);
+
+/* THEME */
+function applyTheme(light){
+  document.documentElement.classList.toggle('light', light);
+  document.getElementById('btn-theme').textContent = light ? '\u2600\ufe0f' : '\u263D';
+}
+document.getElementById('btn-theme').addEventListener('click', () => {
+  const isLight = document.documentElement.classList.toggle('light');
+  document.getElementById('btn-theme').textContent = isLight ? '\u2600\ufe0f' : '\u263D';
+  localStorage.setItem('psiqrex_theme', isLight ? 'light' : 'dark');
+});
+
+/* DRAFT (debounced) */
+let _draftTimer;
+function saveDraft(){
+  clearTimeout(_draftTimer);
+  _draftTimer = setTimeout(async () => {
+    const fields={};
+    document.querySelectorAll('.evol-textarea').forEach(ta=>{fields[ta.dataset.key]=ta.value;});
+    await db.put('drafts',{key:'evol',tipo:STATE.evol.tipo,tags:STATE.evol.tags,fields,patientId:document.getElementById('evol-patient').value,date:document.getElementById('evol-date').value,editingId:STATE.editEid,saved_at:nowISO()});
+    showDraftNote('Borrador guardado · ' + new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'}));
+    setSyncStatus('draft','Borrador guardado');setTimeout(updateSyncIndicator,2000);
+  }, 800);
+}
+async function loadDraft(){
+  const d=await db.get('drafts','evol');if(!d)return;
+  STATE.evol.tipo=d.tipo||'guardia';STATE.evol.tags=d.tags||[];STATE.evol.fields=d.fields||{};STATE.editEid=d.editingId||null;
+  renderEvolFields(d.tipo||'guardia');renderTags();
+  if(d.patientId)document.getElementById('evol-patient').value=d.patientId;
+  if(d.date)document.getElementById('evol-date').value=d.date;
+  document.querySelectorAll('.type-chip').forEach(c=>c.classList.toggle('active',c.dataset.tipo===d.tipo));
+  showDraftNote('Borrador restaurado');
+  toast('Borrador restaurado','info',2000);
+}
+
+/* PATIENT LIST */
+function showPatientList(){
+  document.getElementById('patient-list-view').style.display='';
+  document.getElementById('patient-detail').classList.remove('open');
+  STATE.pid=null;
+  renderPatientList(document.getElementById('search-patients').value);
+}
+/* ── ACCORDION (Config) ───────────────────────────────── */
+document.addEventListener('click', e => {
+  const hdr = e.target.closest('.acc-header');
+  if (!hdr) return;
+  const key  = hdr.dataset.acc;
+  const body = document.getElementById('acc-' + key);
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  hdr.classList.toggle('open', !isOpen);
+  hdr.querySelector('.acc-arrow').style.transform = isOpen ? '' : 'rotate(180deg)';
+});
+// Init arrow state
+document.querySelectorAll('.acc-header.open .acc-arrow').forEach(a => a.style.transform = 'rotate(180deg)');
+
+/* ── SITUATION FILTER ─────────────────────────────────── */
+let _ptSitFilter = '';
+document.getElementById('sit-chips').addEventListener('click', async e => {
+  const chip = e.target.closest('.sit-chip');
+  if (!chip) return;
+  _ptSitFilter = chip.dataset.sit;
+  document.querySelectorAll('.sit-chip').forEach(c => c.classList.toggle('active', c === chip));
+  await renderPatientList(document.getElementById('search-patients').value);
+});
+
+/* ── DYNAMIC DRAFT NOTE ───────────────────────────────── */
+function showDraftNote(text) {
+  const el = document.getElementById('draft-note');
+  document.getElementById('draft-note-text').textContent = text;
+  el.classList.remove('hidden');
+}
+function hideDraftNote() {
+  document.getElementById('draft-note').classList.add('hidden');
+}
+
+/* PATIENT LIST — sort state */
+let _ptSort = 'updated'; // 'updated' | 'name' | 'evols'
+let _ptSortDir = -1;     // -1 desc, 1 asc
+
+document.querySelector('.sort-bar').addEventListener('click', async e => {
+  const btn = e.target.closest('.sort-btn');
+  if (!btn) return;
+  const key = btn.dataset.sort;
+  if (_ptSort === key) {
+    _ptSortDir *= -1;
+  } else {
+    _ptSort = key; _ptSortDir = key === 'name' ? 1 : -1;
+  }
+  document.querySelectorAll('.sort-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.sort === key);
+    if (b.dataset.sort === key) {
+      const arrow = key === 'name'
+        ? (_ptSortDir === 1 ? 'A–Z' : 'Z–A')
+        : (_ptSortDir === -1 ? '&#x2193;' : '&#x2191;');
+      b.querySelector('.sort-dir') && (b.querySelector('.sort-dir').innerHTML = arrow);
+    }
+  });
+  await renderPatientList(document.getElementById('search-patients').value);
+});
+
+function showPatientListSkeleton() {
+  document.getElementById('patient-list').innerHTML = [1,2,3].map(() =>
+    `<div class="card sk-card">
+      <div class="skeleton sk-avatar"></div>
+      <div class="sk-lines">
+        <div class="skeleton sk-line w60"></div>
+        <div class="skeleton sk-line w40"></div>
+      </div>
+      <div class="skeleton sk-line w30" style="height:10px;width:48px"></div>
+    </div>`
+  ).join('');
+}
+
+async function renderPatientList(filter='') {
+  showPatientListSkeleton();
+  let all = await db.all('pacientes');
+  const q = filter.toLowerCase().trim();
+  if (q) all = all.filter(p =>
+    [p.name, p.datos?.alerts||'', p.datos?.notes||''].join(' ').toLowerCase().includes(q)
+  );
+  if (_ptSitFilter) all = all.filter(p => p.datos?.situation === _ptSitFilter);
+
+  // Load evol counts + most recent date for all patients in one pass
+  const allEvols = await db.all('evoluciones');
+  const evolCount = {}, evolDates = {};
+  allEvols.forEach(e => {
+    evolCount[e.paciente_id] = (evolCount[e.paciente_id]||0) + 1;
+    if (!evolDates[e.paciente_id] || e.fecha_evolucion > evolDates[e.paciente_id])
+      evolDates[e.paciente_id] = e.fecha_evolucion;
+  });
+
+  // Sort
+  all.sort((a, b) => {
+    if (_ptSort === 'name')   return _ptSortDir * a.name.localeCompare(b.name, 'es');
+    if (_ptSort === 'evols')  return _ptSortDir * ((evolCount[a.id]||0) - (evolCount[b.id]||0));
+    return _ptSortDir * (new Date(a.updated_at) - new Date(b.updated_at)); // updated
+  });
+
+  document.getElementById('pt-count-label').textContent =
+    `${all.length} paciente${all.length!==1?'s':''} · ${allEvols.length} evolución${allEvols.length!==1?'es':''}`;
+
+  const list = document.getElementById('patient-list');
+  if (!all.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">&#x1F464;</div>
+      <h3>${q ? 'Sin resultados' : 'Sin pacientes aún'}</h3>
+      <p>${q ? 'Probá con otro término.' : 'Creá el primer paciente con el botón de arriba.'}</p>
+      ${!q ? '<button class="btn btn-primary" id="empty-new-pt">+ Nuevo paciente</button>' : ''}
+    </div>`;
+    document.getElementById('empty-new-pt')?.addEventListener('click', openNewPatientModal);
+    return;
+  }
+
+  list.innerHTML = all.map(p => {
+    const count = evolCount[p.id] || 0;
+    const countLabel = count === 0 ? 'Sin evoluciones'
+      : `${count} evolución${count !== 1 ? 'es' : ''}`;
+    // Days since last evol
+    const lastEvolDate = evolDates[p.id];
+    let staleBadge = '';
+    if (lastEvolDate && (p.datos?.situation === 'Internado' || p.datos?.situation === 'Ambulatorio')) {
+      const daysSince = Math.floor((Date.now() - new Date(lastEvolDate)) / 86400000);
+      if (daysSince >= 14) staleBadge = `<span class="badge badge-amber" title="${daysSince} días sin evolución">⏰ ${daysSince}d sin evolución</span>`;
+    }
+    return `<div class="card pt-card" data-id="${p.id}">
+      <div class="pt-avatar">${initials(p.name)}</div>
+      <div class="pt-info">
+        <div class="pt-name">${esc(p.name)}</div>
+        <div class="pt-badges">${buildPatientBadges(p)}${staleBadge}</div>
+        <div class="pt-evol-count"><span>${countLabel}</span></div>
+      </div>
+      <div class="pt-time">${relTime(p.updated_at)}</div>
+      <button class="pt-edit-btn" data-edit-id="${p.id}">Editar</button>
+      <div class="pt-chevron">&rsaquo;</div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('.pt-card').forEach(c =>
+    c.addEventListener('click', e => {
+      if (e.target.closest('.pt-edit-btn')) return; // handled below
+      openPatientDetail(c.dataset.id);
+    })
+  );
+  list.querySelectorAll('.pt-edit-btn').forEach(btn =>
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      STATE.pid = btn.dataset.editId;
+      await editCurrentPatient();
+    })
+  );
+}
+function buildPatientBadges(p){
+  const parts=[];const d=p.datos||{};
+  if(d.sex||d.age)parts.push('<span class="badge badge-gray">'+esc([d.sex,d.age?d.age+'a':''].filter(Boolean).join(' \u00b7 '))+'</span>');
+  if(d.situation){const cls={Internado:'badge-green',Ambulatorio:'badge-accent',Guardia:'badge-amber',Alta:'badge-gray'}[d.situation]||'badge-gray';parts.push('<span class="badge '+cls+'">'+esc(d.situation+(d.ward?' \u00b7 '+d.ward:''))+'</span>');}
+  if(d.alerts)parts.push('<span class="badge badge-red">\u26a0 '+esc(d.alerts)+'</span>');
+  return parts.join('');
+}
+document.getElementById('search-patients').addEventListener('input',e=>renderPatientList(e.target.value));
+document.getElementById('btn-new-patient').addEventListener('click',openNewPatientModal);
+document.getElementById('btn-back-patients').addEventListener('click',showPatientList);
+
+/* PATIENT DETAIL */
+async function openPatientDetail(id){
+  STATE.pid=id;STATE.evolFilter='todas';
+  const p=await db.get('pacientes',id);if(!p)return;
+  document.getElementById('patient-list-view').style.display='none';
+  document.getElementById('patient-detail').classList.add('open');
+  document.getElementById('detail-name').textContent=p.name;
+  document.getElementById('detail-badges').innerHTML=buildPatientBadges(p);
+  const ns=document.getElementById('detail-notes-section');
+  if(p.datos?.notes){ns.style.display='';document.getElementById('detail-notes').textContent=p.datos.notes;}else{ns.style.display='none';}
+
+  // Medication summary
+  await renderMedSummary(id);
+  // Quick notes
+  await loadQuickNotes(id);
+  document.querySelectorAll('#filter-chips .chip').forEach(c=>c.classList.toggle('active',c.dataset.filter==='todas'));
+  document.getElementById('date-from').value = '';
+  document.getElementById('date-to').value   = '';
+  _tlSortAsc = false;
+  document.getElementById('tl-sort-btn').innerHTML = '↓ Más recientes';
+  await renderTimeline(id,'todas');
+}
+async function renderMedSummary(patientId) {
+  const sec = document.getElementById('detail-med-section');
+  const listEl = document.getElementById('detail-med-list');
+  const srcEl = document.getElementById('detail-med-source');
+  const evols = await db.byIndex('evoluciones','paciente_id',patientId);
+  // Find most recent evol with medicacion content
+  const withMed = evols
+    .filter(e => e.contenido?.medicacion?.trim())
+    .sort((a,b) => new Date(b.fecha_evolucion) - new Date(a.fecha_evolucion));
+  if (!withMed.length) { sec.style.display='none'; return; }
+  const latest = withMed[0];
+  const raw = latest.contenido.medicacion.trim();
+  // Parse: split by · or newline or , to get individual drugs
+  const items = raw.split(/[\n·,\/]+/).map(s=>s.trim()).filter(Boolean);
+  if (!items.length) { sec.style.display='none'; return; }
+  sec.style.display='';
+  listEl.innerHTML = items.map(d => `<span class="med-pill">&#x1F48A; ${esc(d)}</span>`).join('');
+  const tipo = TIPO_PRETTY[latest.tipo] || latest.tipo;
+  srcEl.textContent = `\u00daltima actualizaci\u00f3n: ${tipo} del ${formatDateShort(latest.fecha_evolucion)}`;
+}
+
+async function loadQuickNotes(patientId) {
+  const row = await db.get('config', 'qnotes_' + patientId);
+  const ta  = document.getElementById('detail-qnotes');
+  ta.value  = row?.value || '';
+  ta._pid   = patientId;
+}
+
+document.getElementById('btn-save-qnotes').addEventListener('click', async () => {
+  const ta  = document.getElementById('detail-qnotes');
+  const pid = ta._pid;
+  if (!pid) return;
+  await db.put('config', { key: 'qnotes_' + pid, value: ta.value.trim() });
+  toast('Nota guardada', 'ok', 1500);
+});
+
+// Auto-save quick notes on blur
+document.getElementById('detail-qnotes').addEventListener('blur', async () => {
+  const ta  = document.getElementById('detail-qnotes');
+  const pid = ta._pid;
+  if (!pid) return;
+  await db.put('config', { key: 'qnotes_' + pid, value: ta.value.trim() });
+});
+
+let _tlSortAsc = false;
+
+async function renderTimeline(pid, filter) {
+  showTimelineSkeleton();
+  let evols=await db.byIndex('evoluciones','paciente_id',pid);
+  evols.sort((a,b)=> _tlSortAsc
+    ? new Date(a.fecha_evolucion)-new Date(b.fecha_evolucion)
+    : new Date(b.fecha_evolucion)-new Date(a.fecha_evolucion));
+  let filtered=filter==='todas'?evols:evols.filter(e=>e.tipo===filter);
+  const df = document.getElementById('date-from')?.value;
+  const dt = document.getElementById('date-to')?.value;
+  if (df) filtered = filtered.filter(e => e.fecha_evolucion >= new Date(df).toISOString());
+  if (dt) {
+    const dtEnd = new Date(dt); dtEnd.setHours(23,59,59,999);
+    filtered = filtered.filter(e => e.fecha_evolucion <= dtEnd.toISOString());
+  }
+  document.getElementById('evol-count-label').textContent=filtered.length+' evoluci\u00f3n'+(filtered.length!==1?'es':'');
+  const tl=document.getElementById('evol-timeline');
+  if(!filtered.length){tl.innerHTML='<div class="empty-state"><div class="empty-icon">&#x1F4CB;</div><h3>'+(filter!=='todas'?'Sin evoluciones de este tipo':'Sin evoluciones a\u00fan')+'</h3><p>Cre\u00e1 la primera con el bot\u00f3n de arriba.</p></div>';return;}
+  tl.innerHTML=filtered.map(e=>buildEvolCard(e)).join('');
+  tl.querySelectorAll('.evol-act-btn').forEach(btn=>btn.addEventListener('click',()=>{const{action,id}=btn.dataset;if(action==='edit')editEvol(id);if(action==='delete')deleteEvol(id);if(action==='dup')dupEvol(id);}));
+  tl.querySelectorAll('.tag-clickable').forEach(t=>
+    t.addEventListener('click', e => { e.stopPropagation(); searchFromTag(t.dataset.val, t.dataset.tipo); })
+  );
+}
+function buildEvolCard(e){
+  const tipoPretty=TIPO_PRETTY[e.tipo]||e.tipo;
+  const pillCls=PILL_CLASS[e.tipo]||'pill-guardia';
+  const content=FIELDS_ORDER.filter(k=>(e.contenido||{})[k]?.trim()).map(k=>`<p><strong>${k==='diagnostico'?DIAG_LABEL[e.tipo]||'Diagn\u00f3stico':FIELD_LABELS[k]}:</strong> ${esc((e.contenido||{})[k])}</p>`).join('')||'<p style="color:var(--t3)">Sin contenido</p>';
+  const tags=(e.tags||[]).map(t=>
+    `<span class="tag tag-${t.tipo} tag-clickable" data-val="${esc(t.valor)}" data-tipo="${t.tipo}">${esc(t.valor)}</span>`
+  ).join('');
+  return `<div class="card evol-card"><div class="card-section"><div class="evol-head"><span class="evol-pill ${pillCls}">${tipoPretty}</span><span class="evol-datetime">${formatDate(e.fecha_evolucion)}</span></div><div class="evol-body">${content}</div>${tags?'<div class="evol-tags-row">'+tags+'</div>':''}<div class="evol-actions"><button class="evol-act-btn dup" data-action="dup" data-id="${e.id}">Duplicar</button><button class="evol-act-btn" data-action="edit" data-id="${e.id}">Editar</button><button class="evol-act-btn del" data-action="delete" data-id="${e.id}">Eliminar</button></div></div></div>`;
+}
+document.getElementById('tl-sort-btn').addEventListener('click', () => {
+  _tlSortAsc = !_tlSortAsc;
+  document.getElementById('tl-sort-btn').innerHTML = _tlSortAsc
+    ? '↑ Más antiguas'
+    : '↓ Más recientes';
+  renderTimeline(STATE.pid, STATE.evolFilter);
+});
+
+document.getElementById('filter-chips').addEventListener('click',async e=>{
+  const chip=e.target.closest('.chip');if(!chip)return;
+  STATE.evolFilter=chip.dataset.filter;
+  document.querySelectorAll('#filter-chips .chip').forEach(c=>c.classList.toggle('active',c===chip));
+  await renderTimeline(STATE.pid,STATE.evolFilter);
+});
+
+['date-from','date-to'].forEach(id => {
+  document.getElementById(id).addEventListener('change', () =>
+    renderTimeline(STATE.pid, STATE.evolFilter)
+  );
+});
+document.getElementById('date-filter-clear').addEventListener('click', () => {
+  document.getElementById('date-from').value = '';
+  document.getElementById('date-to').value   = '';
+  _tlSortAsc = false;
+  document.getElementById('tl-sort-btn').innerHTML = '↓ Más recientes';
+  renderTimeline(STATE.pid, STATE.evolFilter);
+});
+document.getElementById('btn-edit-patient').addEventListener('click',editCurrentPatient);
+document.getElementById('btn-delete-patient').addEventListener('click',deleteCurrentPatient);
+async function deleteCurrentPatient(){
+  const p=await db.get('pacientes',STATE.pid);if(!p)return;
+  showConfirm('Eliminar paciente','Se eliminar\u00e1 "'+p.name+'" y todas sus evoluciones. Esta acci\u00f3n es irreversible.',async()=>{
+    const evols=await db.byIndex('evoluciones','paciente_id',STATE.pid);
+    for(const e of evols)await db.del('evoluciones',e.id);
+    await db.del('pacientes',STATE.pid);
+    toast('Paciente eliminado');
+    showPatientList();
+    await refreshEvolPatientSelect();
+  });
+}
+async function editCurrentPatient(){
+  const p=await db.get('pacientes',STATE.pid);if(!p)return;
+  STATE.editPid=p.id;document.getElementById('modal-patient-title').textContent='Editar paciente';
+  document.getElementById('p-name').value=p.name||'';document.getElementById('p-sex').value=p.datos?.sex||'';
+  document.getElementById('p-age').value=p.datos?.age||'';document.getElementById('p-situation').value=p.datos?.situation||'';
+  document.getElementById('p-ward').value=p.datos?.ward||'';document.getElementById('p-alerts').value=p.datos?.alerts||'';
+  document.getElementById('p-notes').value=p.datos?.notes||'';openModal('modal-patient');
+}
+
+/* PATIENT MODAL SAVE */
+function openNewPatientModal(){
+  STATE.editPid=null;document.getElementById('modal-patient-title').textContent='Nuevo paciente';
+  ['p-name','p-age','p-ward','p-alerts','p-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('p-sex').value='';document.getElementById('p-situation').value='';
+  openModal('modal-patient');setTimeout(()=>document.getElementById('p-name').focus(),150);
+}
+document.getElementById('btn-save-patient').addEventListener('click',async()=>{
+  const name=document.getElementById('p-name').value.trim();
+  if(!name){toast('El nombre es obligatorio','error');return;}
+  const datos={sex:document.getElementById('p-sex').value,age:document.getElementById('p-age').value.trim(),situation:document.getElementById('p-situation').value,ward:document.getElementById('p-ward').value.trim(),alerts:document.getElementById('p-alerts').value.trim(),notes:document.getElementById('p-notes').value.trim()};
+  const now=nowISO();
+  let patient;
+  if(STATE.editPid){const ex=await db.get('pacientes',STATE.editPid);patient={...ex,name,datos,updated_at:now};}
+  else{patient={id:uuid(),name,datos,created_at:now,updated_at:now};}
+  await db.put('pacientes',patient);closeModal('modal-patient');
+  toast(STATE.editPid?'Paciente actualizado':'Paciente creado');
+  if(STATE.pid===patient.id)await openPatientDetail(patient.id);else await renderPatientList(document.getElementById('search-patients').value);
+  await refreshEvolPatientSelect();
+});
+
+/* EVOL FIELDS */
+function renderEvolFields(tipo){
+  const c=document.getElementById('evol-fields');
+  const fieldsToRender = FIELDS_ORDER;
+  c.innerHTML=fieldsToRender.map((k,i)=>{
+    const label=k==='diagnostico'?DIAG_LABEL[tipo]||'Diagn\u00f3stico':FIELD_LABELS[k];
+    const rows=(k==='psicosemiologia'||k==='evolucion')?5:k==='plan'?4:2;
+    const val=esc(STATE.evol.fields[k]||'');
+    const placeholder={motivo:'Paciente consulta por...',evolucion:tipo==='internacion'?'Evoluci\u00f3n del d\u00eda...':'Evoluci\u00f3n desde la \u00faltima consulta...',psicosemiologia:'Vigil, l\u00facido, orientado...',diagnostico:tipo==='guardia'?'F\u2014 (presuntivo)':'F\u2014',plan:'Conducta, indicaciones...',medicacion:'F\u00e1rmaco \u00b7 dosis \u00b7 v\u00eda...',proximaCita:'Servicio / motivo...'}[k]||'';
+    return '<div style="margin-bottom:'+(i<fieldsToRender.length-1?'14px':'0')+'"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span class="tpl-field-label">'+label+'</span><button class="tpl-trigger" data-field="'+k+'">Plantillas</button></div><textarea class="evol-textarea" data-key="'+k+'" rows="'+rows+'" placeholder="'+placeholder+'">'+val+'</textarea></div>';
+  }).join('');
+  c.querySelectorAll('.evol-textarea').forEach(ta=>ta.addEventListener('input',()=>{STATE.evol.fields[ta.dataset.key]=ta.value;saveDraft();}));
+  c.querySelectorAll('.tpl-trigger').forEach(btn=>btn.addEventListener('click',e=>showTemplatePicker(e,btn.dataset.field)));
+}
+document.querySelectorAll('.type-chip').forEach(chip=>chip.addEventListener('click',()=>{
+  document.querySelectorAll('.type-chip').forEach(c=>c.classList.remove('active'));chip.classList.add('active');
+  STATE.evol.tipo=chip.dataset.tipo;renderEvolFields(chip.dataset.tipo);saveDraft();
+}));
+
+/* TEMPLATE PICKER */
+let _pickerEl=null;
+async function showTemplatePicker(e,fieldKey){
+  closePicker();
+  const all=await db.all('templates');const relevant=all.filter(t=>t.field===fieldKey);
+  _pickerEl=document.createElement('div');_pickerEl.className='tpl-picker';
+  if(!relevant.length){_pickerEl.innerHTML='<div class="tpl-picker-header">'+FIELD_LABELS[fieldKey]+'</div><div class="tpl-picker-empty">Sin plantillas para este campo.<br>Cre\u00e1 una en Config.</div>';}
+  else{_pickerEl.innerHTML='<div class="tpl-picker-header">'+FIELD_LABELS[fieldKey]+'</div>'+relevant.map(t=>'<div class="tpl-picker-item" data-id="'+t.id+'" data-field="'+fieldKey+'"><div class="tpl-picker-name">'+esc(t.name)+'</div></div>').join('');_pickerEl.querySelectorAll('.tpl-picker-item').forEach(item=>item.addEventListener('click',()=>insertTemplate(item.dataset.field,item.dataset.id)));}
+  document.body.appendChild(_pickerEl);
+  const rect=e.target.getBoundingClientRect();const pickerH=280;
+  const top=rect.bottom+4+pickerH>window.innerHeight?rect.top-pickerH-4:rect.bottom+4;
+  _pickerEl.style.top=(top+window.scrollY)+'px';_pickerEl.style.left=Math.min(rect.left,window.innerWidth-290)+'px';
+  setTimeout(()=>document.addEventListener('click',onPickerOutside),10);
+}
+function onPickerOutside(e){if(_pickerEl&&!_pickerEl.contains(e.target))closePicker();}
+function closePicker(){if(_pickerEl){_pickerEl.remove();_pickerEl=null;}document.removeEventListener('click',onPickerOutside);}
+async function insertTemplate(fieldKey,tplId){
+  const tpl=await db.get('templates',tplId);if(!tpl)return;
+  const ta=document.querySelector('.evol-textarea[data-key="'+fieldKey+'"]');if(!ta)return;
+  ta.value=ta.value?ta.value+'\n\n'+tpl.text:tpl.text;
+  STATE.evol.fields[fieldKey]=ta.value;ta.focus();saveDraft();closePicker();toast('Plantilla insertada','ok',1500);
+}
+
+/* TAGS */
+function renderTags(){
+  const wrap=document.getElementById('tags-wrap');const input=document.getElementById('tag-input');
+  wrap.querySelectorAll('.tag').forEach(t=>t.remove());
+  STATE.evol.tags.forEach(t=>{
+    const el=document.createElement('span');el.className='tag tag-'+t.tipo;
+    el.innerHTML=esc(t.valor)+'<span class="tag-x" data-val="'+esc(t.valor)+'">\u00d7</span>';
+    el.querySelector('.tag-x').addEventListener('click',e=>{e.stopPropagation();STATE.evol.tags=STATE.evol.tags.filter(x=>x.valor!==t.valor);renderTags();saveDraft();});
+    wrap.insertBefore(el,input);
+  });
+}
+document.getElementById('tags-wrap').addEventListener('click',()=>document.getElementById('tag-input').focus());
+document.getElementById('tag-input').addEventListener('keydown',e=>{
+  if((e.key==='Enter'||e.key===',')&&!e.shiftKey){e.preventDefault();const val=e.target.value.trim().replace(/,$/,'');if(val){if(!STATE.evol.tags.some(t=>t.valor.toLowerCase()===val.toLowerCase()))STATE.evol.tags.push({valor:val,tipo:STATE.tagType});e.target.value='';renderTags();saveDraft();}}
+  else if(e.key==='Backspace'&&!e.target.value&&STATE.evol.tags.length){STATE.evol.tags.pop();renderTags();saveDraft();}
+});
+document.getElementById('tag-type-row').addEventListener('click',e=>{
+  const btn=e.target.closest('.tag-type-btn');if(!btn)return;
+  document.querySelectorAll('.tag-type-btn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');STATE.tagType=btn.dataset.t;
+});
+
+/* SAVE EVOL */
+document.getElementById('btn-save-evol').addEventListener('click',saveEvolucion);
+async function saveEvolucion(){
+  const patientId=document.getElementById('evol-patient').value;if(!patientId){toast('Selecci\u00f3n un paciente','error');return;}
+  const dateRaw=document.getElementById('evol-date').value;if(!dateRaw){toast('Ingres\u00e1 la fecha y hora','error');return;}
+  const contenido={};document.querySelectorAll('.evol-textarea').forEach(ta=>{if(ta.value.trim())contenido[ta.dataset.key]=ta.value.trim();});
+  if(!Object.keys(contenido).length&&!STATE.evol.tags.length){toast('Complet\u00e1 al menos un campo','error');return;}
+  const isEdit=!!STATE.editEid;const existing=isEdit?await db.get('evoluciones',STATE.editEid):null;
+  const evol={id:isEdit?STATE.editEid:uuid(),paciente_id:patientId,tipo:STATE.evol.tipo,contenido,tags:[...STATE.evol.tags],fecha_evolucion:new Date(dateRaw).toISOString(),created_at:existing?.created_at||nowISO(),updated_at:nowISO()};
+  await db.put('evoluciones',evol);
+  const p=await db.get('pacientes',patientId);if(p){p.updated_at=nowISO();await db.put('pacientes',p);}
+  await db.del('drafts','evol');toast(isEdit?'Evoluci\u00f3n actualizada':'Evoluci\u00f3n guardada');
+  STATE.resetEvol();resetEvolForm();hideDraftNote();await refreshSidebar();
+}
+function resetEvolForm(){
+  document.querySelectorAll('.type-chip').forEach(c=>c.classList.toggle('active',c.dataset.tipo==='guardia'));
+  STATE.evol.tipo='guardia';renderEvolFields('guardia');renderTags();
+  document.getElementById('evol-patient').value='';document.getElementById('evol-date').value=nowLocal();updateSyncIndicator();
+}
+
+/* EDIT / DELETE EVOL */
+async function editEvol(id){
+  const e=await db.get('evoluciones',id);if(!e)return;
+  switchTab('evolucion');await new Promise(r=>setTimeout(r,180));
+  document.getElementById('evol-patient').value=e.paciente_id;
+  const d=new Date(e.fecha_evolucion);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());document.getElementById('evol-date').value=d.toISOString().slice(0,16);
+  STATE.evol.tipo=e.tipo;STATE.evol.tags=[...(e.tags||[])];STATE.evol.fields={...(e.contenido||{})};STATE.editEid=id;
+  document.querySelectorAll('.type-chip').forEach(c=>c.classList.toggle('active',c.dataset.tipo===e.tipo));
+  renderEvolFields(e.tipo);renderTags();toast('Evoluci\u00f3n cargada para editar','info',2000);
+}
+async function deleteEvol(id){showConfirm('Eliminar evoluci\u00f3n','Esta acci\u00f3n es irreversible.',async()=>{await db.del('evoluciones',id);await renderTimeline(STATE.pid,STATE.evolFilter);toast('Evoluci\u00f3n eliminada');});}
+
+async function dupEvol(id) {
+  const src = await db.get('evoluciones', id);
+  if (!src) return;
+  switchTab('evolucion');
+  await new Promise(r => setTimeout(r, 180));
+  await refreshEvolPatientSelect();
+  document.getElementById('evol-patient').value = src.paciente_id;
+  document.getElementById('evol-date').value = nowLocal();
+  STATE.evol.tipo   = src.tipo;
+  STATE.evol.tags   = JSON.parse(JSON.stringify(src.tags || []));
+  STATE.evol.fields = JSON.parse(JSON.stringify(src.contenido || {}));
+  STATE.editEid     = null;
+  document.querySelectorAll('.type-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.tipo === src.tipo));
+  renderEvolFields(src.tipo);
+  renderTags();
+  toast('Evolución duplicada — revisá y guardá', 'info', 3000);
+}
+
+/* SIDEBAR */
+async function refreshEvolPatientSelect(){
+  const patients=await db.all('pacientes');patients.sort((a,b)=>a.name.localeCompare(b.name,'es'));
+  const sel=document.getElementById('evol-patient');const cur=sel.value;
+  sel.innerHTML='<option value="">Seleccionar paciente...</option>'+patients.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('');
+  if(cur)sel.value=cur;
+}
+async function refreshSidebar(){
+  const evols=await db.all('evoluciones');evols.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+  const pts={};(await db.all('pacientes')).forEach(p=>pts[p.id]=p);
+  const last=evols.slice(0,5);
+  const sbr=document.getElementById('sb-recientes');
+  sbr.innerHTML=last.length?last.map(e=>'<div class="sb-recent" data-id="'+e.paciente_id+'"><div class="sb-recent-name">'+esc(pts[e.paciente_id]?.name||'\u2014')+'</div><div class="sb-recent-sub">'+(TIPO_PRETTY[e.tipo]||e.tipo)+' \u00b7 '+relTime(e.created_at)+'</div></div>').join(''):'<div style="font-size:12px;color:var(--t3);padding:4px 9px">Sin evoluciones a\u00fan</div>';
+  sbr.querySelectorAll('.sb-recent[data-id]').forEach(el=>el.addEventListener('click',()=>{switchTab('pacientes');setTimeout(()=>openPatientDetail(el.dataset.id),100);}));
+  document.getElementById('cie-grid').innerHTML=CIE10.map(c=>'<span class="cie-chip" data-code="'+c.code+'">'+c.code+'<span class="cie-name">'+c.name+'</span></span>').join('');
+  document.querySelectorAll('.cie-chip').forEach(chip=>chip.addEventListener('click',()=>{if(!STATE.evol.tags.some(t=>t.valor===chip.dataset.code)){STATE.evol.tags.push({valor:chip.dataset.code,tipo:'diag'});renderTags();saveDraft();toast(chip.dataset.code+' agregado','ok',1400);}}));
+}
+document.getElementById('btn-new-evol-from-detail').addEventListener('click',()=>{
+  const id=STATE.pid;switchTab('evolucion');
+  setTimeout(async()=>{await refreshEvolPatientSelect();document.getElementById('evol-patient').value=id;document.getElementById('evol-date').value=nowLocal();},180);
+});
+
+/* GLOBAL SEARCH */
+const TAG_TYPES = ['diag','med','alert','note'];
+let _sTimeout;
+document.getElementById('search-global').addEventListener('input', e => {
+  clearTimeout(_sTimeout);
+  _sTimeout = setTimeout(() => runSearch(e.target.value), 220);
+});
+
+document.getElementById('sf-tipo-chips').addEventListener('click', e => {
+  const btn = e.target.closest('.sf-chip');
+  if (!btn) return;
+  const sf = btn.dataset.sf;
+  const isTagFilter = TAG_TYPES.includes(sf);
+  // Deactivate chips of same group, allow toggling
+  document.querySelectorAll('#sf-tipo-chips .sf-chip').forEach(b => {
+    const bIsTag = TAG_TYPES.includes(b.dataset.sf);
+    if (bIsTag === isTagFilter) b.classList.remove('active');
+  });
+  // If clicking already-active → reset to 'todo'
+  if (btn.classList.contains('active')) {
+    btn.classList.remove('active');
+    if (isTagFilter) STATE.gTagFilter = null;
+    else { STATE.gfilter = 'todo'; document.querySelector('[data-sf="todo"]').classList.add('active'); }
+  } else {
+    btn.classList.add('active');
+    if (isTagFilter) { STATE.gTagFilter = sf; }
+    else { STATE.gfilter = sf === 'todo' ? 'todo' : sf; }
+  }
+  runSearch(document.getElementById('search-global').value);
+});
+
+// searchFromTag: called when a tag in evol card is clicked
+function searchFromTag(valor, tipo) {
+  switchTab('busqueda');
+  setTimeout(() => {
+    const input = document.getElementById('search-global');
+    input.value = valor;
+    // Activate the right tag chip
+    document.querySelectorAll('#sf-tipo-chips .sf-chip').forEach(b => b.classList.remove('active'));
+    const tagChip = document.querySelector(`#sf-tipo-chips [data-sf="${tipo}"]`);
+    if (tagChip) { tagChip.classList.add('active'); STATE.gTagFilter = tipo; }
+    else { document.querySelector('[data-sf="todo"]').classList.add('active'); STATE.gTagFilter = null; }
+    STATE.gfilter = 'todo';
+    runSearch(valor);
+  }, 80);
+}
+
+async function runSearch(query) {
+  const results = document.getElementById('search-results');
+  const countEl = document.getElementById('sr-count');
+  if (!query.trim() && !STATE.gTagFilter && STATE.gfilter === 'todo') {
+    results.innerHTML = `<div class="empty-state"><div class="empty-icon">&#x1F50D;</div><h3>Busc&#xE1; cualquier cosa</h3><p>Texto libre, diagn&#xF3;sticos, medicaci&#xF3;n, CIE-10, alertas.</p></div>`;
+    countEl.classList.add('hidden'); return;
+  }
+  showSearchSkeleton();
+  try {
+  const q = query.toLowerCase().trim();
+  const pts = {};
+  (await db.all('pacientes')).forEach(p => pts[p.id] = p);
+  let evols = await db.all('evoluciones');
+
+  // Filter by tipo
+  if (STATE.gfilter && STATE.gfilter !== 'todo')
+    evols = evols.filter(e => e.tipo === STATE.gfilter);
+
+  // Filter by tag type
+  if (STATE.gTagFilter)
+    evols = evols.filter(e => (e.tags||[]).some(t => t.tipo === STATE.gTagFilter));
+
+  // Filter by text query
+  if (q) {
+    evols = evols.filter(e => {
+      const pt = pts[e.paciente_id];
+      const tagText = (e.tags||[]).map(t => t.valor).join(' ').toLowerCase();
+      const fieldText = JSON.stringify(e.contenido||{}).toLowerCase();
+      const ptText = (pt?.name||'').toLowerCase() + ' ' + (pt?.datos?.notes||'').toLowerCase();
+      return tagText.includes(q) || fieldText.includes(q) || ptText.includes(q);
+    });
+  }
+
+  evols.sort((a,b) => new Date(b.fecha_evolucion) - new Date(a.fecha_evolucion));
+
+  countEl.textContent = `${evols.length} resultado${evols.length!==1?'s':''}`;
+  countEl.classList.toggle('hidden', evols.length === 0);
+
+  if (!evols.length) {
+    results.innerHTML = `<div class="empty-state"><div class="empty-icon">&#x1F937;</div><h3>Sin resultados</h3><p>Intent&#xE1; con otro t&#xE9;rmino o cambi&#xE1; los filtros.</p></div>`;
+    return;
+  }
+
+  results.innerHTML = evols.map(e => {
+    const pt = pts[e.paciente_id];
+    const pillCls = PILL_CLASS[e.tipo]||'pill-guardia';
+    const tipoPretty = TIPO_PRETTY[e.tipo]||e.tipo;
+    // Excerpt from fields
+    const text = Object.values(e.contenido||{}).filter(Boolean).join(' ');
+    let excerpt = '';
+    if (q) {
+      const idx = text.toLowerCase().indexOf(q);
+      if (idx === -1) excerpt = esc(text.slice(0,130)) + (text.length>130?'\u2026':'');
+      else {
+        const s=Math.max(0,idx-60), en=Math.min(text.length,idx+q.length+60);
+        const seg=text.slice(s,en);
+        const rx=new RegExp(escRx(q),'gi');
+        excerpt=(s>0?'\u2026':'')+esc(seg).replace(rx,m=>`<mark>${m}</mark>`)+(en<text.length?'\u2026':'');
+      }
+    } else {
+      excerpt = esc(text.slice(0,130)) + (text.length>130?'\u2026':'');
+    }
+    const tags = (e.tags||[]).map(t =>
+      `<span class="tag tag-${t.tipo} tag-clickable" data-val="${esc(t.valor)}" data-tipo="${t.tipo}">${esc(t.valor)}</span>`
+    ).join('');
+    return `<div class="card sr-card card-section" data-pid="${e.paciente_id}">
+      <div class="sr-head">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="evol-pill ${pillCls}">${tipoPretty}</span>
+          <span class="sr-patient">${esc(pt?.name||'\u2014')}</span>
+        </div>
+        <span class="sr-date">${formatDateShort(e.fecha_evolucion)}</span>
+      </div>
+      ${excerpt ? `<div class="sr-excerpt">${excerpt}</div>` : ''}
+      ${tags ? `<div class="evol-tags-row" style="margin-top:8px">${tags}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  // Card click → patient detail
+  results.querySelectorAll('.sr-card').forEach(c =>
+    c.addEventListener('click', e => {
+      if (e.target.classList.contains('tag-clickable')) return; // handled below
+      switchTab('pacientes');
+      setTimeout(() => openPatientDetail(c.dataset.pid), 100);
+    })
+  );
+  // Tag click → search by that tag
+  results.querySelectorAll('.tag-clickable').forEach(t =>
+    t.addEventListener('click', e => {
+      e.stopPropagation();
+      searchFromTag(t.dataset.val, t.dataset.tipo);
+    })
+  );
+  } catch(err) {
+    console.error(err);
+    showUIError('search-results', 'Error en la b\u00fasqueda: ' + err.message);
+  }
+}
+
+/* CONFIG */
+async function renderConfigStats(){
+  const[ps,es]=await Promise.all([db.all('pacientes'),db.all('evoluciones')]);
+  document.getElementById('cfg-pt-count').textContent=ps.length+' paciente'+(ps.length!==1?'s':'');
+  document.getElementById('cfg-ev-count').textContent=es.length+' evoluci\u00f3n'+(es.length!==1?'es':'');
+  document.getElementById('cfg-url-label').textContent=STATE.config.supabaseUrl||'No configurado';
+  document.getElementById('cfg-key-label').textContent=STATE.config.supabaseKey?STATE.config.supabaseKey.slice(0,24)+'...':'No configurado';
+}
+document.getElementById('btn-cfg-supabase').addEventListener('click',()=>{document.getElementById('cfg-url-input').value=STATE.config.supabaseUrl||'';document.getElementById('cfg-key-input').value=STATE.config.supabaseKey||'';openModal('modal-supabase');});
+document.getElementById('btn-save-supabase').addEventListener('click',async()=>{
+  const url=document.getElementById('cfg-url-input').value.trim();const key=document.getElementById('cfg-key-input').value.trim();
+  if(!url||!key){toast('Complet\u00e1 ambos campos','error');return;}
+  STATE.setConfig('supabaseUrl',url);STATE.setConfig('supabaseKey',key);
+  await db.put('config',{key:'supabaseUrl',value:url});await db.put('config',{key:'supabaseKey',value:key});
+  closeModal('modal-supabase');toast('Configuraci\u00f3n de Supabase guardada');updateSyncIndicator();await renderConfigStats();
+});
+document.getElementById('btn-export').addEventListener('click',async()=>{
+  const allConfig = await db.all('config');
+  const qnotes = allConfig.filter(r => r.key.startsWith('qnotes_'));
+  const data={exported_at:nowISO(),pacientes:await db.all('pacientes'),evoluciones:await db.all('evoluciones'),qnotes};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='psiqrex_backup_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(a.href);toast('Backup exportado');
+});
+document.getElementById('btn-import').addEventListener('click',()=>{
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json';
+  inp.onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(!data.pacientes||!data.evoluciones)throw new Error('Formato inv\u00e1lido');showConfirm('Importar backup','Importar '+data.pacientes.length+' pacientes y '+data.evoluciones.length+' evoluciones? Los registros existentes se actualizar\u00e1n.',async()=>{for(const p of data.pacientes)await db.put('pacientes',p);for(const ev of data.evoluciones)await db.put('evoluciones',ev);if(data.qnotes)for(const n of data.qnotes)await db.put('config',n);await renderPatientList();await refreshEvolPatientSelect();await renderConfigStats();toast('Importado: '+data.pacientes.length+' pacientes \u00b7 '+data.evoluciones.length+' evoluciones');});}catch(err){toast('Error al importar: '+err.message,'error');}};inp.click();
+});
+document.getElementById('btn-clear-all').addEventListener('click',()=>{
+  showConfirm('Borrar todos los datos','Esta acci\u00f3n eliminar\u00e1 pacientes, evoluciones y borradores. Es irreversible.',async()=>{await db.clearAll(['pacientes','evoluciones','drafts']);await renderPatientList();await renderConfigStats();toast('Datos borrados');});
+});
+
+/* TEMPLATES */
+async function renderTemplateList(){
+  const all=await db.all('templates');all.sort((a,b)=>a.name.localeCompare(b.name,'es'));
+  const list=document.getElementById('template-list');
+  if(!all.length){list.innerHTML='<div style="font-size:13px;color:var(--t3);padding:6px 2px">Sin plantillas. Cre\u00e1 una abajo.</div>';return;}
+  list.innerHTML=all.map(t=>'<div class="tpl-item"><div class="tpl-item-info"><div class="tpl-item-name">'+esc(t.name)+'</div><div class="tpl-item-field">'+(FIELD_LABELS[t.field]||t.field)+(t.builtin?' \u00b7 predefinida':'')+'</div></div><div class="tpl-item-actions"><button class="btn btn-ghost btn-xs tpl-edit-btn" data-id="'+t.id+'">Editar</button><button class="btn btn-danger btn-xs tpl-del-btn" data-id="'+t.id+'">\u00d7</button></div></div>').join('');
+  list.querySelectorAll('.tpl-edit-btn').forEach(btn=>btn.addEventListener('click',()=>openEditTemplate(btn.dataset.id)));
+  list.querySelectorAll('.tpl-del-btn').forEach(btn=>btn.addEventListener('click',()=>showConfirm('Eliminar plantilla','Esta acci\u00f3n es irreversible.',async()=>{await db.del('templates',btn.dataset.id);await renderTemplateList();toast('Plantilla eliminada');})));
+}
+document.getElementById('btn-new-template').addEventListener('click',()=>{
+  STATE.editTid=null;document.getElementById('modal-tpl-title').textContent='Nueva plantilla';
+  ['tpl-name','tpl-text'].forEach(id=>document.getElementById(id).value='');document.getElementById('tpl-field').value='psicosemiologia';
+  openModal('modal-template');setTimeout(()=>document.getElementById('tpl-name').focus(),150);
+});
+async function openEditTemplate(id){
+  const t=await db.get('templates',id);if(!t)return;
+  STATE.editTid=id;document.getElementById('modal-tpl-title').textContent='Editar plantilla';
+  document.getElementById('tpl-name').value=t.name;document.getElementById('tpl-field').value=t.field;document.getElementById('tpl-text').value=t.text;openModal('modal-template');
+}
+document.getElementById('btn-save-template').addEventListener('click',async()=>{
+  const name=document.getElementById('tpl-name').value.trim();const field=document.getElementById('tpl-field').value;const text=document.getElementById('tpl-text').value.trim();
+  if(!name||!text){toast('Nombre y texto son obligatorios','error');return;}
+  const tpl={id:STATE.editTid||uuid(),name,field,text,builtin:false,updated_at:nowISO()};
+  await db.put('templates',tpl);closeModal('modal-template');toast(STATE.editTid?'Plantilla actualizada':'Plantilla creada');await renderTemplateList();
+});
+
+/* PDF EXPORT */
+/* ── PDF ──────────────────────────────────────────────────── */
+document.getElementById('btn-pdf').addEventListener('click', exportPDF);
+
+async function exportPDF() {
+  const id = STATE.pid; if (!id) return;
+  const lbl = document.getElementById('pdf-label');
+  lbl.innerHTML = '<span class="spinner"></span>';
+  try {
+    const patient = await db.get('pacientes', id);
+    const evols   = await db.byIndex('evoluciones','paciente_id', id);
+    evols.sort((a,b) => new Date(b.fecha_evolucion) - new Date(a.fecha_evolucion));
+    const doc = buildPDF([{ patient, evols }]);
+    doc.save(safeName(patient.name) + '_' + today() + '.pdf');
+    toast('PDF generado');
+  } catch(err) {
+    console.error(err); showUIError('evol-timeline', 'Error generando PDF: ' + err.message);
+    toast('Error PDF','error');
+  } finally { lbl.textContent = '\u2193 PDF'; }
+}
+
+document.getElementById('btn-export-pdf-all').addEventListener('click', async () => {
+  const lbl = document.getElementById('pdf-all-label');
+  lbl.innerHTML = '<span class="spinner"></span>';
+  try {
+    const patients = await db.all('pacientes');
+    if (!patients.length) { toast('No hay pacientes','error'); return; }
+    patients.sort((a,b) => a.name.localeCompare(b.name,'es'));
+    const entries = await Promise.all(patients.map(async p => ({
+      patient: p,
+      evols: (await db.byIndex('evoluciones','paciente_id',p.id))
+               .sort((a,b) => new Date(b.fecha_evolucion) - new Date(a.fecha_evolucion))
+    })));
+    const doc = buildPDF(entries, true);
+    doc.save('psiqrex_completo_' + today() + '.pdf');
+    toast(`PDF completo: ${patients.length} pacientes`);
+  } catch(err) {
+    console.error(err); toast('Error PDF completo: ' + err.message,'error');
+  } finally { lbl.textContent = '\u2193 PDF'; }
+});
+
+function safeName(s) {
+  return s.replace(/[^a-zA-Z\u00e1\u00e9\u00ed\u00f3\u00fa\u00c1\u00c9\u00cd\u00d3\u00da\u00f1\u00d10-9 ]/g,'_').trim().replace(/\s+/g,'_');
+}
+function today() { return new Date().toISOString().slice(0,10); }
+
+function buildPDF(entries, multiPatient = false) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const W=210, M=18, CW=W-M*2;
+  // B&W type labels
+  const TIPO_LABEL = { guardia:'GUARDIA', internacion:'INTERNACI\u00d3N', consultorios:'CONSULTORIOS EXT.' };
+  const TAG_PREFIX = { diag:'[CIE-10]', med:'[MED]', alert:'[ALERTA]', note:'[NOTA]' };
+  let firstPage = true;
+
+  const drawHeader = () => {
+    // Top bar: black with white text
+    doc.setFillColor(0,0,0); doc.rect(0,0,W,26,'F');
+    doc.setFontSize(17); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+    doc.text('PsiqRex', M, 11);
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(200,200,200);
+    doc.text('Historia cl\u00ednica \u00b7 Residencia de psiquiatr\u00eda', M, 18);
+    doc.text('Generado: ' + new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'long',year:'numeric'}), W-M, 18, {align:'right'});
+  };
+
+  drawHeader();
+  let y = 34;
+
+  const checkPage = (need=10) => {
+    if (y + need > 282) { doc.addPage(); drawHeader(); y = 34; }
+  };
+
+  for (const { patient, evols } of entries) {
+    if (!firstPage) { doc.addPage(); drawHeader(); y = 34; }
+    firstPage = false;
+
+    // Patient card: black border, white bg
+    const cardH = patient.datos?.alerts ? 27 : 22;
+    doc.setDrawColor(0,0,0); doc.setLineWidth(0.4);
+    doc.roundedRect(M, y, CW, cardH, 2, 2, 'S');
+    doc.setFontSize(14); doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
+    doc.text(patient.name, M+5, y+9);
+    const meta = [patient.datos?.sex, patient.datos?.age ? patient.datos.age+'a' : null,
+                  patient.datos?.situation, patient.datos?.ward].filter(Boolean).join(' \u00b7 ');
+    if (meta) {
+      doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(60,60,60);
+      doc.text(meta, M+5, y+16);
+    }
+    if (patient.datos?.alerts) {
+      doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
+      doc.text('! ALERTA: ' + patient.datos.alerts, M+5, y+23);
+    }
+    y += cardH + 6;
+
+    if (!evols.length) {
+      doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
+      doc.text('Sin evoluciones registradas.', M, y); y += 8;
+    }
+
+    for (const e of evols) {
+      checkPage(22);
+      // Type label: bold black text in brackets, no color background
+      const tipoLabel = TIPO_LABEL[e.tipo] || e.tipo.toUpperCase();
+      doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
+      doc.text('[ ' + tipoLabel + ' ]', M, y+4);
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
+      doc.text(formatDate(e.fecha_evolucion), W-M, y+4, {align:'right'});
+      y += 8;
+      // Thin separator under type row
+      doc.setDrawColor(180,180,180); doc.setLineWidth(0.2);
+      doc.line(M, y, W-M, y); y += 4;
+
+      for (const k of FIELDS_ORDER) {
+        const val = (e.contenido||{})[k]; if (!val?.trim()) continue;
+        const label = k==='diagnostico' ? DIAG_LABEL[e.tipo]||'Diagn\u00f3stico' : FIELD_LABELS[k];
+        checkPage(10);
+        doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
+        doc.text(label.toUpperCase() + ':', M, y); y += 4;
+        doc.setFontSize(9.5); doc.setFont('helvetica','normal'); doc.setTextColor(20,20,20);
+        const lines = doc.splitTextToSize(val, CW);
+        checkPage(lines.length * 5.5);
+        doc.text(lines, M, y); y += lines.length * 5.5 + 2;
+      }
+
+      // Tags as plain text with prefix
+      if (e.tags?.length) {
+        checkPage(7);
+        const tagStr = (e.tags||[]).map(t => (TAG_PREFIX[t.tipo]||'[TAG]') + ' ' + t.valor).join('   ');
+        doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(40,40,40);
+        const tagLines = doc.splitTextToSize(tagStr, CW);
+        checkPage(tagLines.length * 5);
+        doc.text(tagLines, M, y); y += tagLines.length * 5 + 2;
+      }
+
+      // Separator
+      y += 2; doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
+      doc.line(M, y, W-M, y); y += 5;
+    }
+  }
+
+  // Footers
+  const n = doc.internal.getNumberOfPages();
+  for (let i=1; i<=n; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
+    doc.text('PsiqRex \u00b7 Uso m\u00e9dico personal \u00b7 Documento confidencial', M, 293);
+    doc.text(i + ' / ' + n, W-M, 293, {align:'right'});
+  }
+  return doc;
+}
+
+/* ── UI ERROR HELPER ─────────────────────────────────────── */
+function showUIError(containerId, msg) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  const banner = document.createElement('div');
+  banner.className = 'error-banner';
+  banner.innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>${esc(msg)}`;
+  el.prepend(banner);
+  setTimeout(() => banner.remove(), 5000);
+}
+
+/* ── SKELETON HELPERS ────────────────────────────────────── */
+function showTimelineSkeleton() {
+  document.getElementById('evol-timeline').innerHTML = [1,2,3].map(() =>
+    `<div class="card sk-card" style="flex-direction:column;gap:10px;align-items:stretch">
+      <div style="display:flex;justify-content:space-between">
+        <div class="skeleton sk-line" style="width:80px;height:20px;border-radius:20px"></div>
+        <div class="skeleton sk-line" style="width:120px;height:10px;margin-top:5px"></div>
+      </div>
+      <div class="skeleton sk-line w60"></div>
+      <div class="skeleton sk-line w40"></div>
+      <div class="skeleton sk-line" style="width:75%"></div>
+    </div>`
+  ).join('');
+}
+
+function showSearchSkeleton() {
+  document.getElementById('search-results').innerHTML = [1,2,3].map(() =>
+    `<div class="card sk-card" style="flex-direction:column;gap:8px;align-items:stretch;padding:16px 18px">
+      <div style="display:flex;justify-content:space-between">
+        <div class="skeleton sk-line" style="width:100px;height:18px;border-radius:20px"></div>
+        <div class="skeleton sk-line" style="width:80px;height:10px;margin-top:4px"></div>
+      </div>
+      <div class="skeleton sk-line w60"></div>
+      <div class="skeleton sk-line w40"></div>
+    </div>`
+  ).join('');
+}
+
+
+/* ── TUTORIAL SPOTLIGHT ─────────────────────────────────── */
+const TUTORIAL_STEPS = [
+  {
+    selector: '#patient-list-view .page-header',
+    tab: 'pacientes',
+    scroll: false,
+    title: 'Tus pacientes',
+    body: 'Lista completa de pacientes. Buscá por nombre, ordená por última actualización, nombre o cantidad de evoluciones. Hover sobre una card para editarla directamente.',
+  },
+  {
+    selector: '#patient-list-view .sort-bar',
+    tab: 'pacientes',
+    scroll: false,
+    title: 'Ordenar y filtrar',
+    body: 'Ordená por Recientes, A–Z o por cantidad de evoluciones. Filtrá por situación: Internados, Ambulatorios, Guardia o Alta.',
+  },
+  {
+    selector: '#evol-patient',
+    tab: 'evolucion',
+    scroll: false,
+    title: 'Seleccioná paciente y fecha',
+    body: 'Cada evolución queda asociada a un paciente con fecha y hora. El borrador se guarda automáticamente mientras escribís.',
+  },
+  {
+    selector: '.type-chips',
+    tab: 'evolucion',
+    scroll: false,
+    title: 'Tipos de evolución',
+    body: 'Guardia, Internación o Consultorios externos. El label de diagnóstico cambia entre "Diagnóstico presuntivo" y "Diagnóstico" según el tipo. Activá el modo rápido para guardia urgente.',
+  },
+  {
+    selector: '#tag-type-row',
+    tab: 'evolucion',
+    scroll: true,
+    title: 'Sistema de tags',
+    body: 'Escribí un tag y presioná Enter. Seleccioná el tipo antes: CIE-10, Medicación, Alerta o Nota. Los CIE-10 frecuentes del sidebar se agregan con un click.',
+  },
+  {
+    selector: '.search-big',
+    tab: 'busqueda',
+    scroll: false,
+    title: 'Búsqueda global',
+    body: 'Texto libre en todas las evoluciones. Filtrá por tipo de evolución o por tipo de tag. Hacer click en cualquier tag busca todos los pacientes con ese valor.',
+  },
+  {
+    selector: '#tab-config .page-title',
+    tab: 'config',
+    scroll: false,
+    title: 'Configuración',
+    body: 'Gestioná plantillas, exportá backups JSON o PDF. Las secciones son colapsables. Cuando tengas Supabase, configurá la URL y key acá.',
+  },
+];
+
+let _tutStep = 0;
+
+function startTutorial() {
+  _tutStep = 0;
+  document.getElementById('tutorial-overlay').classList.add('active');
+  renderTutStep(0);
+}
+
+function endTutorial() {
+  document.getElementById('tutorial-overlay').classList.remove('active');
+  localStorage.setItem('psiqrex_tutdone','1');
+  ['tut-top','tut-bottom','tut-left','tut-right','tut-frame'].forEach(id => {
+    document.getElementById(id).removeAttribute('style');
+  });
+}
+
+function setCurtains(rect, pad) {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const x = Math.max(0, rect.left - pad);
+  const y = Math.max(0, rect.top  - pad);
+  const x2 = Math.min(vw, rect.right  + pad);
+  const y2 = Math.min(vh, rect.bottom + pad);
+  const w = x2 - x, h = y2 - y;
+
+  const s = (id, css) => { document.getElementById(id).style.cssText = css; };
+  s('tut-top',    `top:0;left:0;right:0;height:${y}px`);
+  s('tut-bottom', `bottom:0;left:0;right:0;height:${vh - y2}px`);
+  s('tut-left',   `top:${y}px;left:0;width:${x}px;height:${h}px`);
+  s('tut-right',  `top:${y}px;right:0;width:${vw - x2}px;height:${h}px`);
+  s('tut-frame',  `left:${x}px;top:${y}px;width:${w}px;height:${h}px`);
+}
+
+function positionTooltip(rect, pad) {
+  const tip     = document.getElementById('tutorial-tooltip');
+  const vw      = window.innerWidth, vh = window.innerHeight;
+  const NAV     = 60;    // nav bar height + buffer
+  const GUTTER  = 12;
+  const MIN_H   = 220;   // minimum usable height for tooltip
+  const tipW    = Math.min(300, vw - GUTTER * 2);
+
+  tip.style.width    = tipW + 'px';
+  tip.style.maxHeight = 'none';
+  tip.style.top      = '-9999px';
+
+  // Measure natural height with no constraints
+  const naturalH = tip.getBoundingClientRect().height || 240;
+
+  const spaceBelow = vh - rect.bottom - pad - GUTTER;
+  const spaceAbove = rect.top - pad - GUTTER - NAV;
+
+  let top, maxH;
+
+  if (spaceBelow >= naturalH) {
+    // Perfect fit below
+    top = rect.bottom + pad + GUTTER;
+    maxH = spaceBelow;
+  } else if (spaceAbove >= naturalH) {
+    // Perfect fit above
+    maxH = spaceAbove;
+    top  = rect.top - pad - GUTTER - naturalH;
+  } else if (spaceBelow >= MIN_H || spaceBelow >= spaceAbove) {
+    // Below with capped height
+    top  = rect.bottom + pad + GUTTER;
+    maxH = Math.max(MIN_H, spaceBelow);
+    // If capped height pushes us off screen, anchor to NAV instead
+    if (top + maxH > vh) maxH = vh - top - GUTTER;
+  } else {
+    // Above with capped height
+    maxH = Math.max(MIN_H, spaceAbove);
+    top  = Math.max(NAV, rect.top - pad - GUTTER - maxH);
+    maxH = rect.top - pad - GUTTER - top;
+  }
+
+  // Final safety clamp: never start below vh - MIN_H
+  if (top + MIN_H > vh) {
+    top  = Math.max(NAV, vh - Math.max(naturalH, MIN_H) - GUTTER);
+    maxH = vh - top - GUTTER;
+  }
+
+  tip.style.maxHeight = Math.max(MIN_H, maxH) + 'px';
+  tip.style.top  = Math.max(NAV, top) + 'px';
+  tip.style.left = Math.max(GUTTER, Math.min(rect.left, vw - tipW - GUTTER)) + 'px';
+}
+
+async function renderTutStep(i) {
+  const step = TUTORIAL_STEPS[i];
+
+  // Content first (no flash)
+  document.getElementById('tut-step-label').textContent = `Paso ${i+1} de ${TUTORIAL_STEPS.length}`;
+  document.getElementById('tut-title').textContent = step.title;
+  document.getElementById('tut-body').textContent  = step.body;
+  document.getElementById('tut-dots').innerHTML = TUTORIAL_STEPS.map((_,j) =>
+    `<div class="tut-dot ${j===i?'active':''}"></div>`
+  ).join('');
+  document.getElementById('tut-next').textContent =
+    i === TUTORIAL_STEPS.length - 1 ? '¡Listo!' : 'Siguiente →';
+  document.getElementById('tut-prev').style.display = i === 0 ? 'none' : '';
+
+  // Switch tab if needed, wait for render
+  if (STATE.currentTab !== step.tab) {
+    switchTab(step.tab);
+    await new Promise(r => setTimeout(r, 380));
+  }
+
+  // Resolve target
+  let target = step.selector ? document.querySelector(step.selector) : null;
+  // Validate: must be visible (has dimensions)
+  if (!target || target.getBoundingClientRect().width === 0 || target.getBoundingClientRect().height === 0) {
+    target = document.querySelector('#tab-' + step.tab);
+  }
+  if (!target) return;
+
+  // Scroll page to top first for predictable layout
+  window.scrollTo({ top: 0, behavior: 'instant' });
+  await new Promise(r => setTimeout(r, 80));
+
+  // If step requires scrolling to element, do it
+  if (step.scroll) {
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    await new Promise(r => setTimeout(r, 350));
+  }
+
+  // Re-measure after any scroll
+  const rect = target.getBoundingClientRect();
+
+  // Validate element is in viewport
+  const inView = rect.top >= 52 && rect.bottom <= window.innerHeight && rect.width > 0 && rect.height > 0;
+  if (!inView) {
+    target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  const finalRect = target.getBoundingClientRect();
+  setCurtains(finalRect, 6);
+  // Two rAF: ensure paint + measure
+  requestAnimationFrame(() => requestAnimationFrame(() => positionTooltip(finalRect, 6)));
+}
+
+document.getElementById('tut-next').addEventListener('click', () => {
+  if (_tutStep >= TUTORIAL_STEPS.length - 1) { endTutorial(); return; }
+  _tutStep++;
+  renderTutStep(_tutStep);
+});
+document.getElementById('tut-prev').addEventListener('click', () => {
+  if (_tutStep <= 0) return;
+  _tutStep--;
+  renderTutStep(_tutStep);
+});
+document.getElementById('tut-close').addEventListener('click', endTutorial);
+
+// Config page buttons
+document.addEventListener('click', e => {
+  if (e.target.id === 'btn-start-tutorial') startTutorial();
+});
+
+/* ── KEYBOARD — only Escape to close modals/pickers ──────── */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+    closePicker();
+  }
+});
+
+/* DEMO DATA */
+async function seedDemoData(){
+  const now=new Date(),ago=d=>new Date(now-d*86400000).toISOString();
+  const p1={id:uuid(),name:'Juan Rodr\u00edguez',datos:{sex:'Masculino',age:'34',situation:'Internado',ward:'Sala 3',alerts:'Riesgo autol\u00edtico',notes:'Derivado de guardia el 15/05. Internaci\u00f3n involuntaria.'},created_at:ago(10),updated_at:ago(1)};
+  const p2={id:uuid(),name:'Mar\u00eda Gonz\u00e1lez',datos:{sex:'Femenino',age:'28',situation:'Ambulatorio',ward:'',alerts:'',notes:'Buena adherencia al tratamiento. Trabaja medio tiempo.'},created_at:ago(30),updated_at:ago(3)};
+  const p3={id:uuid(),name:'Carlos M\u00e9ndez',datos:{sex:'Masculino',age:'52',situation:'Guardia',ward:'Guardia',alerts:'Desvinculaci\u00f3n familiar',notes:''},created_at:ago(1),updated_at:ago(0)};
+  await db.put('pacientes',p1);await db.put('pacientes',p2);await db.put('pacientes',p3);
+  const evols=[
+    {id:uuid(),paciente_id:p1.id,tipo:'internacion',contenido:{evolucion:'Refiere dormir algo mejor. Persiste la ideaci\u00f3n suicida sin plan estructurado.',psicosemiologia:'Paciente vigil, orientado. Afecto aplanado, hipot\u00edmico. Discurso enlentecido, coherente. Ideaci\u00f3n suicida pasiva sin plan. Niega alucinaciones. Juicio deteriorado. Cr\u00edtica parcial.',diagnostico:'F20.0 Esquizofrenia paranoide',plan:'Continuar risperidona 2mg/d\u00eda. Clonazepam 2mg/noche. Psicoterapia de crisis martes y viernes.',medicacion:'Risperidona 2mg/d\u00eda \u00b7 Clonazepam 2mg/noche'},tags:[{valor:'F20.0',tipo:'diag'},{valor:'Risperidona 2mg',tipo:'med'},{valor:'Ideaci\u00f3n suicida',tipo:'alert'}],fecha_evolucion:ago(1),created_at:ago(1)},
+    {id:uuid(),paciente_id:p1.id,tipo:'guardia',contenido:{motivo:'Agitaci\u00f3n psicomotriz. Enfermer\u00eda lo trae por golpear la pared de su habitaci\u00f3n.',psicosemiologia:'Exaltado, discurso acelerado, contenido delirante de perjuicio. No responde a reorientaci\u00f3n verbal.',diagnostico:'Episodio agudo en contexto de esquizofrenia paranoide.',plan:'Haloperidol 5mg IM stat. Contenci\u00f3n verbal y ambiental. Reevaluar en 2h.'},tags:[{valor:'F20.0',tipo:'diag'},{valor:'Haloperidol 5mg IM',tipo:'med'},{valor:'Agitaci\u00f3n',tipo:'alert'}],fecha_evolucion:ago(3),created_at:ago(3)},
+    {id:uuid(),paciente_id:p2.id,tipo:'consultorios',contenido:{evolucion:'Refiere \u00e1nimo estable. Retom\u00f3 actividad laboral parcialmente. Duerme bien.',psicosemiologia:'Eut\u00edmica. Pensamiento organizado. Sin ideaci\u00f3n suicida activa. Juicio conservado. Cr\u00edtica presente.',diagnostico:'F33.0 Trastorno depresivo recurrente, episodio leve actual',plan:'Continuar esquema. Pr\u00f3xima cita en 3 semanas.',medicacion:'Sertralina 100mg/d\u00eda',proximaCita:'15/06/2025 \u2014 Consultorio externo'},tags:[{valor:'F33.0',tipo:'diag'},{valor:'Sertralina 100mg',tipo:'med'}],fecha_evolucion:ago(3),created_at:ago(3)},
+    {id:uuid(),paciente_id:p3.id,tipo:'guardia',contenido:{motivo:'Crisis de angustia en contexto de conflicto familiar. Acompa\u00f1ado por esposa.',psicosemiologia:'Angustiado, taquic\u00e1rdico. Pensamiento rumiativo. Sin ideaci\u00f3n autol\u00edtica. Sin alteraciones sensoperceptivas.',diagnostico:'F41.0 Trastorno de p\u00e1nico',plan:'Lorazepam 1mg VO. Psicoeducaci\u00f3n. Derivar a consultorio externo de salud mental.'},tags:[{valor:'F41.0',tipo:'diag'},{valor:'Lorazepam 1mg',tipo:'med'}],fecha_evolucion:ago(0),created_at:ago(0)},
+  ];
+  for(const e of evols)await db.put('evoluciones',e);
+}
+
+/* BOOT */
+async function boot(){
+  // Apply saved theme before anything renders
+  const savedTheme = localStorage.getItem('psiqrex_theme');
+  applyTheme(savedTheme === 'light');
+  STATE.db=await initDB();
+  const[urlRow,keyRow]=await Promise.all([db.get('config','supabaseUrl'),db.get('config','supabaseKey')]);
+  if(urlRow)STATE.setConfig('supabaseUrl',urlRow.value);if(keyRow)STATE.setConfig('supabaseKey',keyRow.value);
+  const existingTpls=await db.all('templates');
+  if(!existingTpls.length)for(const t of DEFAULT_TEMPLATES)await db.put('templates',t);
+  const existingPts=await db.all('pacientes');
+  if(!existingPts.length)await seedDemoData();
+  renderEvolFields('guardia');await renderPatientList();await refreshEvolPatientSelect();
+  document.getElementById('evol-date').value=nowLocal();updateSyncIndicator();
+  const draft=await db.get('drafts','evol');if(draft)await loadDraft();
+  const loader=document.getElementById('loading');loader.classList.add('out');loader.addEventListener('animationend',()=>loader.remove(),{once:true});
+  // Show tutorial on first visit
+  if(!localStorage.getItem('psiqrex_tutdone')) setTimeout(startTutorial, 600);
+}
+boot().catch(err=>{document.getElementById('loading').innerHTML='<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:12px">\u26a0\ufe0f</div><div style="color:var(--red);font-size:13px">Error al inicializar:<br>'+String(err.message)+'</div></div>';});
+
+// ── SERVICE WORKER REGISTRATION ─────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('[PsiqRex] SW registered:', reg.scope))
+      .catch(err => console.log('[PsiqRex] SW error:', err));
+  });
+}
+</script>
+</body>
+</html>
