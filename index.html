@@ -712,10 +712,19 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
     <div class="card">
       <div class="card-section">
         <div id="auth-error" style="display:none;background:var(--red-bg);border:1px solid rgba(248,113,113,0.2);border-radius:var(--rs);padding:10px 13px;font-size:12px;color:var(--red);margin-bottom:14px"></div>
+        <!-- Supabase config (shown only when not configured) -->
+        <div id="auth-sb-config" style="display:none;margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--b1)">
+          <div style="font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.08em;font-family:var(--mono);margin-bottom:10px">Configurar Supabase</div>
+          <div class="field"><label>URL del proyecto</label><input type="text" id="auth-sb-url" placeholder="https://xxxx.supabase.co"></div>
+          <div class="field"><label>Anon Key</label><input type="text" id="auth-sb-key" placeholder="eyJhbGc..."></div>
+        </div>
         <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="tu@email.com" autocomplete="email"></div>
         <div class="field"><label>Contraseña</label><input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password"></div>
         <button class="btn btn-primary" id="btn-login" style="width:100%;justify-content:center;margin-top:4px">
           <span id="login-label">Iniciar sesión</span>
+        </button>
+        <button class="btn btn-ghost" id="btn-use-local" style="width:100%;justify-content:center;margin-top:8px;font-size:12px">
+          Usar sin cuenta (solo local)
         </button>
       </div>
     </div>
@@ -2187,10 +2196,23 @@ document.addEventListener('click', e => {
 /* ── AUTH ────────────────────────────────────────────────── */
 function showAuthScreen() {
   console.log('[Auth] showAuthScreen called');
+  // Show SB config fields if not yet configured
+  const hasCreds = STATE.config.supabaseUrl && STATE.config.supabaseKey;
+  const sbConfig = document.getElementById('auth-sb-config');
+  sbConfig.style.display = hasCreds ? 'none' : 'block';
+  if (!hasCreds) {
+    document.getElementById('auth-sb-url').value = '';
+    document.getElementById('auth-sb-key').value = '';
+  }
   document.getElementById('auth-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
   document.getElementById('nav').style.display = 'none';
-  setTimeout(() => document.getElementById('auth-email').focus(), 200);
+  setTimeout(() => {
+    const focusEl = hasCreds
+      ? document.getElementById('auth-email')
+      : document.getElementById('auth-sb-url');
+    focusEl.focus();
+  }, 200);
 }
 
 function hideAuthScreen() {
@@ -2212,6 +2234,22 @@ document.getElementById('btn-login').addEventListener('click', async () => {
   const email    = document.getElementById('auth-email').value.trim();
   const password = document.getElementById('auth-password').value;
   if (!email || !password) { showAuthError('Completá email y contraseña'); return; }
+
+  // If SB not configured yet, pick up from form
+  if (!STATE.config.supabaseUrl || !STATE.config.supabaseKey) {
+    const url = document.getElementById('auth-sb-url').value.trim();
+    const key = document.getElementById('auth-sb-key').value.trim();
+    if (!url || !key) { showAuthError('Completá la URL y Anon Key de Supabase'); return; }
+    // Save credentials
+    STATE.setConfig('supabaseUrl', url);
+    STATE.setConfig('supabaseKey', key);
+    await db.put('config', {key:'supabaseUrl', value:url});
+    await db.put('config', {key:'supabaseKey', value:key});
+    const ok = SB.init(url, key);
+    if (!ok) { showAuthError('No se pudo conectar a Supabase. Verificá la URL y key.'); return; }
+    await new Promise(r => setTimeout(r, 300));
+  }
+
   clearAuthError();
   const lbl = document.getElementById('login-label');
   lbl.innerHTML = '<span class="spinner"></span>';
@@ -2221,6 +2259,12 @@ document.getElementById('btn-login').addEventListener('click', async () => {
   hideAuthScreen();
   document.getElementById('btn-logout').classList.remove('hidden');
   await onSignedIn();
+});
+
+document.getElementById('btn-use-local').addEventListener('click', () => {
+  hideAuthScreen();
+  updateSyncIndicator();
+  toast('Modo local — los datos no se sincronizan', 'info', 3000);
 });
 
 // Enter key on password field
@@ -2417,12 +2461,9 @@ async function boot(){
   loader.addEventListener('animationend', () => loader.remove(), {once:true});
 
   // 9. Supabase auth check
-  console.log('[Boot] URL:', STATE.config.supabaseUrl ? 'set' : 'NOT SET');
-  console.log('[Boot] Key:', STATE.config.supabaseKey ? 'set' : 'NOT SET');
   if (STATE.config.supabaseUrl && STATE.config.supabaseKey) {
     try {
       const ok = SB.init(STATE.config.supabaseUrl, STATE.config.supabaseKey);
-      console.log('[Boot] SB.init result:', ok, '| window.supabase:', !!window.supabase);
       if (ok) {
         await new Promise(r => setTimeout(r, 400));
 
@@ -2437,7 +2478,6 @@ async function boot(){
         }
 
         const session = await SB.getSession();
-        console.log('[Boot] Session:', session ? 'FOUND user=' + session.user?.email : 'NULL → should show login');
         if (session) {
           SB.user = session.user;
           document.getElementById('btn-logout').classList.remove('hidden');
@@ -2453,7 +2493,6 @@ async function boot(){
             toast('Bienvenido a PsiqRex — sesión iniciada', 'ok', 3000);
           }
         } else {
-          console.log('[Boot] No session → calling showAuthScreen()');
           showAuthScreen();
         }
       } else {
@@ -2465,7 +2504,8 @@ async function boot(){
       updateSyncIndicator();
     }
   } else {
-    updateSyncIndicator();
+    // No Supabase configured yet → show login where user can configure + login
+    showAuthScreen();
   }
 
   // 10. Tutorial on first visit
