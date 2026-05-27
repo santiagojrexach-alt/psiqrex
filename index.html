@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F9E0;</text></svg>">
-<link rel="manifest" href="manifest.json" crossorigin="use-credentials">
+
 <meta name="theme-color" content="#111113">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -2487,12 +2487,10 @@ async function boot(){
 }
 boot().catch(err=>{document.getElementById('loading').innerHTML='<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:12px">\u26a0\ufe0f</div><div style="color:var(--red);font-size:13px">Error al inicializar:<br>'+String(err.message)+'</div></div>';});
 
-// ── SERVICE WORKER REGISTRATION ─────────────────────────
+// SW disabled — re-enable after stable release
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('[PsiqRex] SW registered:', reg.scope))
-      .catch(err => console.log('[PsiqRex] SW error:', err));
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister());
   });
 }
 </script>
