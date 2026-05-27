@@ -1765,7 +1765,21 @@ document.getElementById('btn-import').addEventListener('click',()=>{
   inp.onchange=async e=>{const file=e.target.files[0];if(!file)return;try{const data=JSON.parse(await file.text());if(!data.pacientes||!data.evoluciones)throw new Error('Formato inv\u00e1lido');showConfirm('Importar backup','Importar '+data.pacientes.length+' pacientes y '+data.evoluciones.length+' evoluciones? Los registros existentes se actualizar\u00e1n.',async()=>{for(const p of data.pacientes)await db.put('pacientes',p);for(const ev of data.evoluciones)await db.put('evoluciones',ev);if(data.qnotes)for(const n of data.qnotes)await db.put('config',n);await renderPatientList();await refreshEvolPatientSelect();await renderConfigStats();toast('Importado: '+data.pacientes.length+' pacientes \u00b7 '+data.evoluciones.length+' evoluciones');});}catch(err){toast('Error al importar: '+err.message,'error');}};inp.click();
 });
 document.getElementById('btn-clear-all').addEventListener('click',()=>{
-  showConfirm('Borrar todos los datos','Esta acci\u00f3n eliminar\u00e1 pacientes, evoluciones y borradores. Es irreversible.',async()=>{await db.clearAll(['pacientes','evoluciones','drafts']);await renderPatientList();await renderConfigStats();toast('Datos borrados');});
+  showConfirm('Borrar todos los datos','Esto eliminará todos los pacientes y evoluciones local y en Supabase. Es irreversible.',async()=>{
+    // Delete from Supabase
+    if(SB.client && SB.user){
+      await SB.client.from('evoluciones').delete().eq('user_id',SB.user.id);
+      await SB.client.from('pacientes').delete().eq('user_id',SB.user.id);
+    }
+    // Clear local stores
+    await db.clearAll(['pacientes','evoluciones','drafts']);
+    // Reset sync state so next sync starts fresh
+    await db.del('config','sync_queue');
+    await db.del('config','synced_once');
+    await renderPatientList();
+    await renderConfigStats();
+    toast('Datos borrados');
+  });
 });
 
 /* TEMPLATES */
