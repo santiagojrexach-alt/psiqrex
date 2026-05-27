@@ -1,7 +1,7 @@
 // PsiqRex Service Worker
 // Estrategia: Cache-first para assets estáticos, Network-first para el HTML
 
-const CACHE_NAME = 'psiqrex-v1';
+const CACHE_NAME = 'psiqrex-v3';
 const STATIC_ASSETS = [
   './index.html',
   './manifest.json',

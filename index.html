@@ -702,7 +702,7 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
 <div id="toast-wrap"></div>
 
 <!-- AUTH SCREEN -->
-<div id="auth-screen" style="position:fixed;inset:0;background:var(--bg);z-index:600;display:none;align-items:center;justify-content:center;padding:20px">
+<div id="auth-screen" style="position:fixed;inset:0;background:var(--bg);z-index:600;display:flex;visibility:hidden;align-items:center;justify-content:center;padding:20px">
   <div style="width:min(380px,100%);display:flex;flex-direction:column;gap:20px">
     <div style="text-align:center">
       <div style="font-size:40px;margin-bottom:12px">&#x1F9E0;</div>
@@ -2195,8 +2195,6 @@ document.addEventListener('click', e => {
 
 /* ── AUTH ────────────────────────────────────────────────── */
 function showAuthScreen() {
-  console.log('[Auth] showAuthScreen called');
-  // Show SB config fields if not yet configured
   const hasCreds = STATE.config.supabaseUrl && STATE.config.supabaseKey;
   const sbConfig = document.getElementById('auth-sb-config');
   sbConfig.style.display = hasCreds ? 'none' : 'block';
@@ -2204,21 +2202,27 @@ function showAuthScreen() {
     document.getElementById('auth-sb-url').value = '';
     document.getElementById('auth-sb-key').value = '';
   }
-  document.getElementById('auth-screen').style.display = 'flex';
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('nav').style.display = 'none';
+  const screen = document.getElementById('auth-screen');
+  screen.style.display    = 'flex';
+  screen.style.visibility = 'visible';
+  screen.style.zIndex     = '9999';
+  document.getElementById('app').style.visibility = 'hidden';
+  document.getElementById('nav').style.visibility = 'hidden';
   setTimeout(() => {
     const focusEl = hasCreds
       ? document.getElementById('auth-email')
       : document.getElementById('auth-sb-url');
-    focusEl.focus();
+    focusEl?.focus();
   }, 200);
 }
 
 function hideAuthScreen() {
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app').style.display = '';
-  document.getElementById('nav').style.display = '';
+  const screen = document.getElementById('auth-screen');
+  screen.style.display    = 'flex';
+  screen.style.visibility = 'hidden';
+  screen.style.zIndex     = '600';
+  document.getElementById('app').style.visibility = '';
+  document.getElementById('nav').style.visibility = '';
 }
 
 function showAuthError(msg) {
