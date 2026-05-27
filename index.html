@@ -1754,7 +1754,6 @@ document.getElementById('btn-clear-all').addEventListener('click',()=>{
     await db.clearAll(['pacientes','evoluciones','drafts']);
     // Reset sync state so next sync starts fresh
     await db.del('config','sync_queue');
-    await db.del('config','synced_once');
     await renderPatientList();
     await renderConfigStats();
     toast('Datos borrados');
@@ -2270,58 +2269,40 @@ async function fullSync() {
     const remote = await SB.fetchAll();
     if (!remote) { hideSyncBar(); return; }
 
-    const syncedOnceRow = await db.get('config', 'synced_once');
-    const isFirstSync   = !syncedOnceRow;
+    // Always bidirectional merge — local and remote are equal peers
+    // Push local-only records to remote, pull remote-only to local
+    // For conflicts: last updated_at wins
+    const localPts   = await db.all('pacientes');
+    const localEvols = await db.all('evoluciones');
 
-    if (isFirstSync) {
-      // First sync: push local to remote first, then merge
-      const localPts   = await db.all('pacientes');
-      const localEvols = await db.all('evoluciones');
-      // Push any local data to remote
-      for (const p of localPts)   await SB.upsertPaciente(p);
-      for (const e of localEvols) await SB.upsertEvolucion(e);
-      // Now fetch fresh remote (includes what we just pushed)
-      const fresh = await SB.fetchAll();
-      if (fresh) {
-        await db.clearAll(['pacientes', 'evoluciones']);
-        for (const p of fresh.pacientes)   await db.put('pacientes', p);
-        for (const e of fresh.evoluciones) await db.put('evoluciones', e);
+    const remotePtMap   = Object.fromEntries(remote.pacientes.map(p  => [p.id, p]));
+    const remoteEvolMap = Object.fromEntries(remote.evoluciones.map(e => [e.id, e]));
+    const localPtMap    = Object.fromEntries(localPts.map(p  => [p.id, p]));
+    const localEvolMap  = Object.fromEntries(localEvols.map(e => [e.id, e]));
+
+    // Patients
+    const allPtIds = new Set([...Object.keys(remotePtMap), ...Object.keys(localPtMap)]);
+    for (const id of allPtIds) {
+      const r = remotePtMap[id], l = localPtMap[id];
+      if (!r && l) { await SB.upsertPaciente(l); }
+      else if (r && !l) { await db.put('pacientes', r); }
+      else if (r && l) {
+        const winner = new Date(r.updated_at) >= new Date(l.updated_at) ? r : l;
+        await db.put('pacientes', winner);
+        if (winner === l) await SB.upsertPaciente(l);
       }
-      await db.put('config', { key: 'synced_once', value: '1' });
-    } else {
-      // Subsequent syncs: bidirectional merge, last-write-wins by updated_at
-      const localPts   = await db.all('pacientes');
-      const localEvols = await db.all('evoluciones');
+    }
 
-      const remotePtMap   = Object.fromEntries(remote.pacientes.map(p  => [p.id, p]));
-      const remoteEvolMap = Object.fromEntries(remote.evoluciones.map(e => [e.id, e]));
-      const localPtMap    = Object.fromEntries(localPts.map(p  => [p.id, p]));
-      const localEvolMap  = Object.fromEntries(localEvols.map(e => [e.id, e]));
-
-      // Patients
-      const allPtIds = new Set([...Object.keys(remotePtMap), ...Object.keys(localPtMap)]);
-      for (const id of allPtIds) {
-        const r = remotePtMap[id], l = localPtMap[id];
-        if (!r) { await SB.upsertPaciente(l); }
-        else if (!l) { await db.put('pacientes', r); }
-        else {
-          const winner = new Date(r.updated_at) >= new Date(l.updated_at) ? r : l;
-          await db.put('pacientes', winner);
-          if (winner === l) await SB.upsertPaciente(l);
-        }
-      }
-
-      // Evoluciones
-      const allEvolIds = new Set([...Object.keys(remoteEvolMap), ...Object.keys(localEvolMap)]);
-      for (const id of allEvolIds) {
-        const r = remoteEvolMap[id], l = localEvolMap[id];
-        if (!r) { await SB.upsertEvolucion(l); }
-        else if (!l) { await db.put('evoluciones', r); }
-        else {
-          const winner = new Date(r.updated_at||r.created_at) >= new Date(l.updated_at||l.created_at) ? r : l;
-          await db.put('evoluciones', winner);
-          if (winner === l) await SB.upsertEvolucion(l);
-        }
+    // Evoluciones
+    const allEvolIds = new Set([...Object.keys(remoteEvolMap), ...Object.keys(localEvolMap)]);
+    for (const id of allEvolIds) {
+      const r = remoteEvolMap[id], l = localEvolMap[id];
+      if (!r && l) { await SB.upsertEvolucion(l); }
+      else if (r && !l) { await db.put('evoluciones', r); }
+      else if (r && l) {
+        const winner = new Date(r.updated_at||r.created_at) >= new Date(l.updated_at||l.created_at) ? r : l;
+        await db.put('evoluciones', winner);
+        if (winner === l) await SB.upsertEvolucion(l);
       }
     }
 
