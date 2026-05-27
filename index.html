@@ -2186,6 +2186,7 @@ document.addEventListener('click', e => {
 
 /* ── AUTH ────────────────────────────────────────────────── */
 function showAuthScreen() {
+  console.log('[Auth] showAuthScreen called');
   document.getElementById('auth-screen').style.display = 'flex';
   document.getElementById('app').style.display = 'none';
   document.getElementById('nav').style.display = 'none';
@@ -2416,9 +2417,12 @@ async function boot(){
   loader.addEventListener('animationend', () => loader.remove(), {once:true});
 
   // 9. Supabase auth check
+  console.log('[Boot] URL:', STATE.config.supabaseUrl ? 'set' : 'NOT SET');
+  console.log('[Boot] Key:', STATE.config.supabaseKey ? 'set' : 'NOT SET');
   if (STATE.config.supabaseUrl && STATE.config.supabaseKey) {
     try {
       const ok = SB.init(STATE.config.supabaseUrl, STATE.config.supabaseKey);
+      console.log('[Boot] SB.init result:', ok, '| window.supabase:', !!window.supabase);
       if (ok) {
         await new Promise(r => setTimeout(r, 400));
 
@@ -2433,6 +2437,7 @@ async function boot(){
         }
 
         const session = await SB.getSession();
+        console.log('[Boot] Session:', session ? 'FOUND user=' + session.user?.email : 'NULL → should show login');
         if (session) {
           SB.user = session.user;
           document.getElementById('btn-logout').classList.remove('hidden');
@@ -2448,6 +2453,7 @@ async function boot(){
             toast('Bienvenido a PsiqRex — sesión iniciada', 'ok', 3000);
           }
         } else {
+          console.log('[Boot] No session → calling showAuthScreen()');
           showAuthScreen();
         }
       } else {
