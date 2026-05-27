@@ -1235,7 +1235,7 @@ function buildPatientBadges(p){
   if(d.alerts)parts.push('<span class="badge badge-red">\u26a0 '+esc(d.alerts)+'</span>');
   return parts.join('');
 }
-document.getElementById('search-patients').addEventListener('input',e=>renderPatientList(e.target.value));
+document.getElementById('search-patients').addEventListener('input',e=>{if(STATE.db)renderPatientList(e.target.value);});
 document.getElementById('btn-new-patient').addEventListener('click',openNewPatientModal);
 document.getElementById('btn-back-patients').addEventListener('click',showPatientList);
 
@@ -1568,6 +1568,7 @@ document.getElementById('btn-new-evol-from-detail').addEventListener('click',()=
 const TAG_TYPES = ['diag','med','alert','note'];
 let _sTimeout;
 document.getElementById('search-global').addEventListener('input', e => {
+  if (!STATE.db) return;
   clearTimeout(_sTimeout);
   _sTimeout = setTimeout(() => runSearch(e.target.value), 220);
 });
@@ -1729,7 +1730,7 @@ document.addEventListener('click', async e => {
   }
 });
 
-document.// Supabase config hardcoded
+// Supabase config hardcoded
 
 document.getElementById('btn-export').addEventListener('click',async()=>{
   const allConfig = await db.all('config');
