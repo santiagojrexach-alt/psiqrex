@@ -664,6 +664,34 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
     <div class="modal-footer"><button class="btn btn-ghost" data-close="modal-supabase">Cancelar</button><button class="btn btn-primary" id="btn-save-supabase">Guardar</button></div>
   </div>
 </div>
+<!-- SET PASSWORD MODAL (first login via invite) -->
+<div class="modal-overlay" id="modal-set-password">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Establecer contraseña</div>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--t2);margin-bottom:16px;line-height:1.6">
+        Primera vez que ingresás. Establecé una contraseña para los próximos accesos.
+      </div>
+      <div class="field">
+        <label>Nueva contraseña</label>
+        <input type="password" id="new-password" placeholder="Mínimo 8 caracteres">
+      </div>
+      <div class="field">
+        <label>Repetir contraseña</label>
+        <input type="password" id="new-password-confirm" placeholder="Repetir contraseña">
+      </div>
+      <div id="set-pwd-error" style="display:none;color:var(--red);font-size:12px;margin-top:8px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="btn-set-password" style="width:100%;justify-content:center">
+        <span id="set-pwd-label">Guardar contraseña</span>
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modal-confirm">
   <div class="modal">
     <div class="modal-header"><div class="modal-title" id="confirm-title">Confirmar</div><button class="modal-close" data-close="modal-confirm">&#xD7;</button></div>
@@ -2292,6 +2320,37 @@ async function fullSync() {
   }
 }
 
+/* ── SET PASSWORD (first invite) ────────────────────────── */
+function showSetPasswordModal() {
+  document.getElementById('modal-set-password').classList.add('open');
+  setTimeout(() => document.getElementById('new-password').focus(), 200);
+}
+
+document.getElementById('btn-set-password').addEventListener('click', async () => {
+  const pwd  = document.getElementById('new-password').value;
+  const pwd2 = document.getElementById('new-password-confirm').value;
+  const errEl = document.getElementById('set-pwd-error');
+  errEl.style.display = 'none';
+
+  if (pwd.length < 8) { errEl.textContent = 'Mínimo 8 caracteres'; errEl.style.display='block'; return; }
+  if (pwd !== pwd2)   { errEl.textContent = 'Las contraseñas no coinciden'; errEl.style.display='block'; return; }
+
+  const lbl = document.getElementById('set-pwd-label');
+  lbl.innerHTML = '<span class="spinner"></span>';
+
+  const { error } = await SB.client.auth.updateUser({ password: pwd });
+  lbl.textContent = 'Guardar contraseña';
+
+  if (error) {
+    errEl.textContent = error.message;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  closeModal('modal-set-password');
+  toast('Contraseña establecida. ¡Bienvenido a PsiqRex!', 'ok', 3000);
+});
+
 /* ── KEYBOARD — only Escape to close modals/pickers ──────── */
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
@@ -2361,8 +2420,18 @@ async function boot(){
     try {
       const ok = SB.init(STATE.config.supabaseUrl, STATE.config.supabaseKey);
       if (ok) {
-        // Small delay to let SDK initialize fully
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise(r => setTimeout(r, 400));
+
+        // Handle magic link / invite token in URL hash
+        const hash = window.location.hash;
+        if (hash && hash.includes('access_token')) {
+          // Supabase SDK picks up the token automatically from the hash
+          // Wait a bit more for it to process
+          await new Promise(r => setTimeout(r, 600));
+          // Clean the URL
+          history.replaceState(null, '', window.location.pathname);
+        }
+
         const session = await SB.getSession();
         if (session) {
           SB.user = session.user;
@@ -2370,8 +2439,15 @@ async function boot(){
           setSyncStatus('ok', 'Supabase');
           await SyncQueue.flush();
           await fullSync();
+          // Check if this is a first-time invite (needs password update)
+          const hashParams = new URLSearchParams(hash.replace('#',''));
+          if (hashParams.get('type') === 'invite') {
+            // Show password update prompt
+            showSetPasswordModal();
+          } else if (hash && hash.includes('access_token')) {
+            toast('Bienvenido a PsiqRex — sesión iniciada', 'ok', 3000);
+          }
         } else {
-          // No active session — show login
           showAuthScreen();
         }
       } else {
@@ -2379,12 +2455,10 @@ async function boot(){
       }
     } catch(err) {
       console.error('[Boot] Supabase init error:', err);
-      // Don't block the app if Supabase fails — run locally
       toast('Supabase no disponible, modo local', 'info', 3000);
       updateSyncIndicator();
     }
   } else {
-    // No Supabase configured → run locally
     updateSyncIndicator();
   }
 
