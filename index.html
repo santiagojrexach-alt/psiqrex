@@ -2300,69 +2300,56 @@ async function fullSync() {
     const remote = await SB.fetchAll();
     if (!remote) { hideSyncBar(); return; }
 
-    // Get local data
-    const localPts   = await db.all('pacientes');
-    const localEvols = await db.all('evoluciones');
+    const syncedOnceRow = await db.get('config', 'synced_once');
+    const isFirstSync   = !syncedOnceRow;
 
-    // Build maps for merge
-    const remotePtMap   = Object.fromEntries(remote.pacientes.map(p => [p.id, p]));
-    const remoteEvolMap = Object.fromEntries(remote.evoluciones.map(e => [e.id, e]));
-    const localPtMap    = Object.fromEntries(localPts.map(p => [p.id, p]));
-    const localEvolMap  = Object.fromEntries(localEvols.map(e => [e.id, e]));
+    if (isFirstSync) {
+      // First sync on this device: remote is source of truth.
+      // Wipe local and load from remote entirely.
+      await db.clearAll(['pacientes', 'evoluciones']);
+      for (const p of remote.pacientes)   await db.put('pacientes', p);
+      for (const e of remote.evoluciones) await db.put('evoluciones', e);
+      await db.put('config', { key: 'synced_once', value: '1' });
+    } else {
+      // Subsequent syncs: bidirectional merge, last-write-wins by updated_at
+      const localPts   = await db.all('pacientes');
+      const localEvols = await db.all('evoluciones');
 
-    // Merge patients: last-write-wins by updated_at
-    const mergedPts = [];
-    const allPtIds  = new Set([...Object.keys(remotePtMap), ...Object.keys(localPtMap)]);
-    for (const id of allPtIds) {
-      const r = remotePtMap[id], l = localPtMap[id];
-      if (!r) {
-        // Only local — push to remote
-        await SB.upsertPaciente(l);
-        mergedPts.push(l);
-      } else if (!l) {
-        // Only remote — save locally (skip demo data check)
-        await db.put('pacientes', r);
-        mergedPts.push(r);
-      } else {
-        // Both exist — keep newer
-        const winner = new Date(r.updated_at) >= new Date(l.updated_at) ? r : l;
-        await db.put('pacientes', winner);
-        if (winner === l) await SB.upsertPaciente(l);
-        mergedPts.push(winner);
+      const remotePtMap   = Object.fromEntries(remote.pacientes.map(p  => [p.id, p]));
+      const remoteEvolMap = Object.fromEntries(remote.evoluciones.map(e => [e.id, e]));
+      const localPtMap    = Object.fromEntries(localPts.map(p  => [p.id, p]));
+      const localEvolMap  = Object.fromEntries(localEvols.map(e => [e.id, e]));
+
+      // Patients
+      const allPtIds = new Set([...Object.keys(remotePtMap), ...Object.keys(localPtMap)]);
+      for (const id of allPtIds) {
+        const r = remotePtMap[id], l = localPtMap[id];
+        if (!r) { await SB.upsertPaciente(l); }
+        else if (!l) { await db.put('pacientes', r); }
+        else {
+          const winner = new Date(r.updated_at) >= new Date(l.updated_at) ? r : l;
+          await db.put('pacientes', winner);
+          if (winner === l) await SB.upsertPaciente(l);
+        }
       }
-    }
 
-    // Merge evoluciones: same strategy
-    const allEvolIds = new Set([...Object.keys(remoteEvolMap), ...Object.keys(localEvolMap)]);
-    for (const id of allEvolIds) {
-      const r = remoteEvolMap[id], l = localEvolMap[id];
-      if (!r) {
-        await SB.upsertEvolucion(l);
-      } else if (!l) {
-        await db.put('evoluciones', r);
-      } else {
-        const winner = new Date(r.updated_at || r.created_at) >= new Date(l.updated_at || l.created_at) ? r : l;
-        await db.put('evoluciones', winner);
-        if (winner === l) await SB.upsertEvolucion(l);
-      }
-    }
-
-    // Deduplicate local patients by id (safety net)
-    const allLocalPts = await db.all('pacientes');
-    const seenIds = new Set();
-    for (const p of allLocalPts) {
-      if (seenIds.has(p.id)) {
-        await db.del('pacientes', p.id);
-      } else {
-        seenIds.add(p.id);
+      // Evoluciones
+      const allEvolIds = new Set([...Object.keys(remoteEvolMap), ...Object.keys(localEvolMap)]);
+      for (const id of allEvolIds) {
+        const r = remoteEvolMap[id], l = localEvolMap[id];
+        if (!r) { await SB.upsertEvolucion(l); }
+        else if (!l) { await db.put('evoluciones', r); }
+        else {
+          const winner = new Date(r.updated_at||r.created_at) >= new Date(l.updated_at||l.created_at) ? r : l;
+          await db.put('evoluciones', winner);
+          if (winner === l) await SB.upsertEvolucion(l);
+        }
       }
     }
 
     hideSyncBar();
     setSyncStatus('ok', 'Supabase');
     toast('Sincronización completa', 'ok', 2500);
-
-    // Refresh UI
     await renderPatientList();
     await refreshEvolPatientSelect();
     await refreshSidebar();
@@ -2452,9 +2439,7 @@ async function boot(){
   const existingTpls = await db.all('templates');
   if (!existingTpls.length) for (const t of DEFAULT_TEMPLATES) await db.put('templates', t);
 
-  // 5. Seed demo data if no patients yet
-  const existingPts = await db.all('pacientes');
-  if (!existingPts.length) await seedDemoData();
+  // 5. No demo data — start empty, sync fills from Supabase
 
   // 6. Init UI
   renderEvolFields('guardia');
