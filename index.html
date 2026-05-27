@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>PsiqRex</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F9E0;</text></svg>">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="manifest.json" crossorigin="use-credentials">
 <meta name="theme-color" content="#111113">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -774,9 +774,14 @@ const SB = {
 
   init(url, key) {
     if (!url || !key) return false;
+    if (!window.supabase) { console.error('[SB] SDK not loaded'); return false; }
     try {
       this.client = window.supabase.createClient(url, key, {
-        auth: { persistSession: true, autoRefreshToken: true }
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          storageKey: 'psiqrex-auth',
+        }
       });
       return true;
     } catch(e) {
@@ -2353,20 +2358,30 @@ async function boot(){
 
   // 9. Supabase auth check
   if (STATE.config.supabaseUrl && STATE.config.supabaseKey) {
-    const ok = SB.init(STATE.config.supabaseUrl, STATE.config.supabaseKey);
-    if (ok) {
-      const session = await SB.getSession();
-      if (session) {
-        SB.user = session.user;
-        document.getElementById('btn-logout').classList.remove('hidden');
-        setSyncStatus('ok', 'Supabase');
-        // Flush offline queue then sync
-        await SyncQueue.flush();
-        await fullSync();
+    try {
+      const ok = SB.init(STATE.config.supabaseUrl, STATE.config.supabaseKey);
+      if (ok) {
+        // Small delay to let SDK initialize fully
+        await new Promise(r => setTimeout(r, 300));
+        const session = await SB.getSession();
+        if (session) {
+          SB.user = session.user;
+          document.getElementById('btn-logout').classList.remove('hidden');
+          setSyncStatus('ok', 'Supabase');
+          await SyncQueue.flush();
+          await fullSync();
+        } else {
+          // No active session — show login
+          showAuthScreen();
+        }
       } else {
-        // Has credentials but no active session → show login
-        showAuthScreen();
+        updateSyncIndicator();
       }
+    } catch(err) {
+      console.error('[Boot] Supabase init error:', err);
+      // Don't block the app if Supabase fails — run locally
+      toast('Supabase no disponible, modo local', 'info', 3000);
+      updateSyncIndicator();
     }
   } else {
     // No Supabase configured → run locally
