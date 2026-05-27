@@ -8,10 +8,10 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F9E0;</text></svg>">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
 
 <meta name="theme-color" content="#111113">
-<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="PsiqRex">
 <meta name="description" content="Historia clínica psiquiátrica personal">
@@ -30,14 +30,14 @@
   --nav-h:52px;--r:12px;--rs:7px;
 }
 :root.light{
-  --bg:#e8e9f0;--s1:#ffffff;--s2:#f2f2f7;--s3:#e4e4ec;--s4:#d0d0da;
-  --b1:rgba(0,0,0,0.07);--b2:rgba(0,0,0,0.12);--b3:rgba(0,0,0,0.22);
-  --t1:#0a0a0e;--t2:#1e1e2a;--t3:#5a5a6e;
-  --accent:#4f46e5;--accent2:#6355e0;--adim:rgba(79,70,229,0.10);--adim2:rgba(79,70,229,0.20);
-  --green:#047857;--green-bg:rgba(4,120,87,0.09);
-  --amber:#92400e;--amber-bg:rgba(146,64,14,0.09);
-  --red:#b91c1c;--red-bg:rgba(185,28,28,0.09);
-  --blue:#1d4ed8;--blue-bg:rgba(29,78,216,0.09);
+  --bg:#dfe0e8;--s1:#f2f2f7;--s2:#e8e8ef;--s3:#dcdce5;--s4:#c8c8d4;
+  --b1:rgba(0,0,0,0.08);--b2:rgba(0,0,0,0.13);--b3:rgba(0,0,0,0.22);
+  --t1:#0d0d10;--t2:#2e2e3a;--t3:#6e6e80;
+  --accent:#5046d4;--accent2:#6355e0;--adim:rgba(80,70,212,0.12);--adim2:rgba(80,70,212,0.22);
+  --green:#047857;--green-bg:rgba(4,120,87,0.10);
+  --amber:#92400e;--amber-bg:rgba(146,64,14,0.10);
+  --red:#b91c1c;--red-bg:rgba(185,28,28,0.10);
+  --blue:#1d4ed8;--blue-bg:rgba(29,78,216,0.10);
 }
 html,body{height:100%}
 body{font-family:var(--sans);background:var(--bg);color:var(--t1);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;overflow-x:hidden}
@@ -59,19 +59,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--t1);font-size:14px
 .tab-panel{display:none}.tab-panel.active{display:block;animation:fadeUp 0.22s cubic-bezier(0.16,1,0.3,1) both}
 @keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 .card{background:var(--s1);border:1px solid var(--b2);border-radius:var(--r);box-shadow:0 2px 12px rgba(0,0,0,0.25),0 1px 3px rgba(0,0,0,0.2)}
-:root.light .card{box-shadow:0 2px 8px rgba(0,0,0,0.08),0 1px 2px rgba(0,0,0,0.05);border-color:rgba(0,0,0,0.09)}
 .card-section{padding:16px 18px}.card-section+.card-section{border-top:1px solid var(--b1)}
-.section-label{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px}
+.section-label{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:12px}
 .field{margin-bottom:14px}.field:last-child{margin-bottom:0}
 .field label{display:block;font-size:12px;font-weight:500;color:var(--t2);margin-bottom:6px}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media(max-width:480px){.field-row{grid-template-columns:1fr}}
 input[type="text"],input[type="email"],input[type="password"],input[type="datetime-local"],input[type="search"],select,textarea{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:var(--rs);padding:10px 12px;font-family:var(--sans);font-size:13px;color:var(--t1);outline:none;transition:border-color 0.15s,box-shadow 0.15s;-webkit-appearance:none}
-input::placeholder,textarea::placeholder{color:var(--t3);opacity:0.65}
-@media(max-width:600px){#btn-save-evol{width:100%;justify-content:center}}
+input::placeholder,textarea::placeholder{color:var(--t3)}
 input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--adim)}
-:root.light input,:root.light select,:root.light textarea{background:#ebebf3;border-color:rgba(0,0,0,0.13)}
-:root.light input:focus,:root.light select:focus,:root.light textarea:focus{background:#fff}
 textarea{resize:vertical;line-height:1.65}select{cursor:pointer}select option{background:var(--s2)}
 .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border-radius:var(--rs);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;border:none;transition:opacity 0.15s,transform 0.1s;white-space:nowrap;user-select:none}
 .btn:hover{opacity:0.85}.btn:active{transform:scale(0.98)}
@@ -80,7 +76,6 @@ textarea{resize:vertical;line-height:1.65}select{cursor:pointer}select option{ba
 .btn-danger{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,113,113,0.2)}
 .btn-sm{padding:6px 11px;font-size:12px}.btn-xs{padding:4px 9px;font-size:11px}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid transparent}
-@media(max-width:430px){.badge{font-size:10px;padding:2px 7px}}
 .badge-gray{background:var(--s3);color:var(--t2);border-color:var(--b2)}
 .badge-green{background:var(--green-bg);color:var(--green);border-color:rgba(52,211,153,0.2)}
 .badge-amber{background:var(--amber-bg);color:var(--amber);border-color:rgba(251,191,36,0.2)}
@@ -102,7 +97,6 @@ textarea{resize:vertical;line-height:1.65}select{cursor:pointer}select option{ba
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);z-index:200;display:none;align-items:center;justify-content:center;padding:20px}
 .modal-overlay.open{display:flex}
 .modal{background:var(--s1);border:1px solid var(--b2);border-radius:16px;box-shadow:0 32px 64px rgba(0,0,0,0.5);width:min(500px,100%);animation:modalIn 0.28s cubic-bezier(0.16,1,0.3,1) both;max-height:90vh;overflow-y:auto}
-:root.light .modal{box-shadow:0 8px 40px rgba(0,0,0,0.15),0 2px 8px rgba(0,0,0,0.08)}
 @keyframes modalIn{from{opacity:0;transform:scale(0.96)}to{opacity:1;transform:scale(1)}}
 .modal-header{padding:20px 22px 16px;border-bottom:1px solid var(--b1);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--s1);z-index:1}
 .modal-title{font-size:16px;font-weight:600;letter-spacing:-0.02em}
@@ -139,12 +133,11 @@ textarea{resize:vertical;line-height:1.65}select{cursor:pointer}select option{ba
 /* Error banner */
 .error-banner{background:var(--red-bg);border:1px solid rgba(248,113,113,0.25);border-radius:var(--rs);padding:12px 16px;font-size:13px;color:var(--red);display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .error-banner svg{flex-shrink:0}
-.pt-evol-count{font-family:var(--mono);font-size:10px;color:var(--t2);margin-top:3px;display:flex;align-items:center;gap:4px}
+.pt-evol-count{font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:3px;display:flex;align-items:center;gap:4px}
 .pt-evol-count span{background:var(--s3);border:1px solid var(--b2);border-radius:4px;padding:1px 6px;color:var(--t2);font-weight:500}
 .pt-avatar{width:38px;height:38px;border-radius:10px;background:var(--adim);border:1px solid rgba(124,106,247,0.2);display:grid;place-items:center;font-size:14px;font-weight:700;color:var(--accent2);flex-shrink:0;font-family:var(--mono)}
 .pt-info{flex:1;min-width:0}
 .pt-name{font-size:14px;font-weight:600;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-@media(max-width:430px){.pt-name{max-width:150px}}
 .pt-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
 .pt-time{font-size:11px;color:var(--t3);font-family:var(--mono);white-space:nowrap;flex-shrink:0}
 .pt-chevron{color:var(--t3);font-size:18px;flex-shrink:0}
@@ -178,7 +171,7 @@ textarea{resize:vertical;line-height:1.65}select{cursor:pointer}select option{ba
 .date-filter-clear:hover{background:var(--adim)}
 .timeline-count{font-size:13px;font-weight:500;color:var(--t2)}
 .filter-chips{display:flex;gap:5px;flex-wrap:wrap}
-.chip{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;font-family:var(--sans);border:1px solid var(--b2);background:var(--s2);color:var(--t2);cursor:pointer;transition:all 0.15s}
+.chip{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;font-family:var(--sans);border:1px solid var(--b2);background:transparent;color:var(--t3);cursor:pointer;transition:all 0.15s}
 .chip.active{background:var(--s3);color:var(--t1);border-color:var(--b3)}
 #evol-timeline{display:flex;flex-direction:column;gap:10px}
 .evol-card{transition:border-color 0.15s}.evol-card:hover{border-color:var(--b3)}
@@ -320,7 +313,7 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
 .draft-note.hidden{opacity:0;pointer-events:none}
 .cfg-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;gap:12px}
 .cfg-row+.cfg-row{border-top:1px solid var(--b1)}
-.cfg-label{font-size:14px;font-weight:500}.cfg-sub{font-size:12px;color:var(--t2);margin-top:2px}
+.cfg-label{font-size:14px;font-weight:500}.cfg-sub{font-size:12px;color:var(--t3);margin-top:2px}
 .tpl-list{display:flex;flex-direction:column;gap:6px}
 .tpl-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s2);border:1px solid var(--b2);border-radius:var(--rs)}
 .tpl-item-info{flex:1;min-width:0}.tpl-item-name{font-size:13px;font-weight:500}
@@ -387,7 +380,7 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
 <body>
 <div id="loading"><div class="loader-logo">PsiqRex</div><div class="loader-bar"><div class="loader-fill"></div></div></div>
 <nav id="nav">
-  <div class="nav-brand"><div class="nav-brand-icon">&#x1F9E0;</div>PsiqRex</div>
+  <div class="nav-brand"><img src="logo.svg" alt="PsiqRex" class="nav-brand-icon" style="width:28px;height:28px;object-fit:contain">PsiqRex</div>
   <div class="nav-tabs">
     <button class="nav-tab active" data-tab="pacientes">Pacientes</button>
     <button class="nav-tab" data-tab="evolucion">Nueva evoluci&#xF3;n</button>
