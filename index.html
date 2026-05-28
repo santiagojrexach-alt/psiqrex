@@ -555,11 +555,11 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
       <div class="page-title" style="margin-bottom:16px">Configuración</div>
 
       <div class="cfg-section">
-        <div class="acc-header open" data-acc="tpl">
+        <div class="acc-header" data-acc="tpl">
           <span class="acc-title">&#x1F4CB; Plantillas de evolución</span>
           <span class="acc-arrow">&#x25BE;</span>
         </div>
-        <div class="acc-body open" id="acc-tpl">
+        <div class="acc-body" id="acc-tpl">
           <div class="card"><div class="card-section"><div class="tpl-list" id="template-list"></div></div></div>
           <button class="btn btn-ghost btn-sm" id="btn-new-template">+ Nueva plantilla</button>
         </div>
@@ -578,11 +578,11 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
       </div>
 
       <div class="cfg-section">
-        <div class="acc-header open" data-acc="data">
+        <div class="acc-header" data-acc="data">
           <span class="acc-title">&#x1F4BE; Datos locales</span>
           <span class="acc-arrow">&#x25BE;</span>
         </div>
-        <div class="acc-body open" id="acc-data">
+        <div class="acc-body" id="acc-data">
           <div class="card">
             <div class="cfg-row"><div><div class="cfg-label">Pacientes</div><div class="cfg-sub" id="cfg-pt-count"></div></div></div>
             <div class="cfg-row"><div><div class="cfg-label">Evoluciones</div><div class="cfg-sub" id="cfg-ev-count"></div></div></div>
@@ -699,8 +699,8 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
   <div style="width:min(380px,100%);display:flex;flex-direction:column;gap:20px">
     <div style="text-align:center">
       <img src="logo.svg" alt="PsiqRex" style="width:72px;height:72px;margin-bottom:12px;object-fit:contain">
-      <div style="font-size:24px;font-weight:700;letter-spacing:-0.03em">PsiqRex</div>
-      <div style="font-size:13px;color:var(--t2);margin-top:6px">Historia clínica psiquiátrica</div>
+      <div style="font-size:22px;font-weight:700;letter-spacing:-0.03em">Historia Clínica Digital</div>
+      <div style="font-size:13px;color:var(--t2);margin-top:6px">PsiqRex</div>
     </div>
     <!-- Auth mode toggle -->
     <div style="display:flex;gap:8px;background:var(--s2);border-radius:10px;padding:4px">
@@ -718,9 +718,7 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
         <button class="btn btn-primary" id="btn-login" style="width:100%;justify-content:center;margin-top:4px">
           <span id="login-label">Iniciar sesión</span>
         </button>
-        <button class="btn btn-ghost" id="btn-use-local" style="width:100%;justify-content:center;margin-top:8px;font-size:12px">
-          Usar sin cuenta (solo local)
-        </button>
+
         <div style="text-align:center;margin-top:8px">
           <button id="btn-forgot-pwd" style="background:none;border:none;color:var(--accent2);font-size:12px;cursor:pointer;font-family:var(--sans)">
             ¿Olvidaste tu contraseña?
@@ -958,7 +956,7 @@ function updateSyncBadge(n) {
 /* STATE */
 const STATE=(() => {
   let _db=null,_cfg={},_tab='pacientes',_pid=null,_efilter='todas',_editPid=null,_editEid=null,_editTid=null;
-  let _evol={tipo:'guardia',tags:[],fields:{}},_tagType='diag',_gfilter='todo',_gTagFilter=null;
+  let _evol={tipo:'guardia',tags:[],fields:{}},_evolExtraOpen=false,_tagType='diag',_gfilter='todo',_gTagFilter=null;
   return {
     get db(){return _db},set db(v){_db=v},
     get config(){return _cfg},setConfig(k,v){_cfg[k]=v},
@@ -969,7 +967,8 @@ const STATE=(() => {
     get editEid(){return _editEid},set editEid(v){_editEid=v},
     get editTid(){return _editTid},set editTid(v){_editTid=v},
     get evol(){return _evol},
-    resetEvol(){_evol={tipo:'guardia',tags:[],fields:{}};_editEid=null;},
+    get evolExtraOpen(){return _evolExtraOpen},set evolExtraOpen(v){_evolExtraOpen=v},
+    resetEvol(){_evol={tipo:'guardia',tags:[],fields:{}};_editEid=null;_evolExtraOpen=false;},
     get tagType(){return _tagType},set tagType(v){_tagType=v},
     get gfilter(){return _gfilter},set gfilter(v){_gfilter=v},
     get gTagFilter(){return _gTagFilter},set gTagFilter(v){_gTagFilter=v},
@@ -1456,13 +1455,25 @@ document.getElementById('btn-save-patient').addEventListener('click',async()=>{
 function renderEvolFields(tipo){
   const c=document.getElementById('evol-fields');
   const fieldsToRender = FIELDS_ORDER;
-  c.innerHTML=fieldsToRender.map((k,i)=>{
+  const PRIMARY = ['motivo','evolucion'];
+  const SECONDARY = fieldsToRender.filter(k=>!PRIMARY.includes(k));
+  const makeField = (k,isLast) => {
     const label=k==='diagnostico'?DIAG_LABEL[tipo]||'Diagn\u00f3stico':FIELD_LABELS[k];
     const rows=(k==='psicosemiologia'||k==='evolucion')?5:k==='plan'?4:2;
     const val=esc(STATE.evol.fields[k]||'');
     const placeholder={motivo:'Paciente consulta por...',evolucion:tipo==='internacion'?'Evoluci\u00f3n del d\u00eda...':'Evoluci\u00f3n desde la \u00faltima consulta...',psicosemiologia:'Vigil, l\u00facido, orientado...',diagnostico:tipo==='guardia'?'F\u2014 (presuntivo)':'F\u2014',plan:'Conducta, indicaciones...',medicacion:'F\u00e1rmaco \u00b7 dosis \u00b7 v\u00eda...',proximaCita:'Servicio / motivo...'}[k]||'';
-    return '<div style="margin-bottom:'+(i<fieldsToRender.length-1?'14px':'0')+'"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span class="tpl-field-label">'+label+'</span><button class="tpl-trigger" data-field="'+k+'">Plantillas</button></div><textarea class="evol-textarea" data-key="'+k+'" rows="'+rows+'" placeholder="'+placeholder+'">'+val+'</textarea></div>';
-  }).join('');
+    return '<div style="margin-bottom:'+(isLast?'0':'14px')+'"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px"><span class="tpl-field-label">'+label+'</span><button class="tpl-trigger" data-field="'+k+'">Plantillas</button></div><textarea class="evol-textarea" data-key="'+k+'" rows="'+rows+'" placeholder="'+placeholder+'">'+val+'</textarea></div>';
+  };
+  const primaryHTML = PRIMARY.filter(k=>fieldsToRender.includes(k)).map((k,i,a)=>makeField(k,i===a.length-1&&!SECONDARY.length)).join('');
+  const secondaryHTML = SECONDARY.length ? '<div id="evol-extra" style="margin-top:14px;'+(STATE.evolExtraOpen?'':'display:none')+'">'+SECONDARY.map((k,i)=>makeField(k,i===SECONDARY.length-1)).join('')+'</div>' : '';
+  const toggleHTML = SECONDARY.length ? '<button id="evol-extra-toggle" style="margin-top:12px;width:100%;padding:9px;border:1px dashed var(--b2);border-radius:var(--rs);background:transparent;color:var(--t2);font-size:12px;font-family:var(--sans);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px">&#x25BE; '+(STATE.evolExtraOpen?'Ocultar campos adicionales':'Ver m\u00e1s campos')+'</button>' : '';
+  c.innerHTML = primaryHTML + toggleHTML + secondaryHTML;
+  const toggleBtn = c.querySelector('#evol-extra-toggle');
+  if(toggleBtn) toggleBtn.addEventListener('click',()=>{
+    STATE.evolExtraOpen = !STATE.evolExtraOpen;
+    c.querySelector('#evol-extra').style.display = STATE.evolExtraOpen?'':'none';
+    toggleBtn.innerHTML = '&#x25BE; '+(STATE.evolExtraOpen?'Ocultar campos adicionales':'Ver m\u00e1s campos');
+  });
   c.querySelectorAll('.evol-textarea').forEach(ta=>ta.addEventListener('input',()=>{STATE.evol.fields[ta.dataset.key]=ta.value;saveDraft();}));
   c.querySelectorAll('.tpl-trigger').forEach(btn=>btn.addEventListener('click',e=>showTemplatePicker(e,btn.dataset.field)));
 }
@@ -1547,6 +1558,8 @@ async function editEvol(id){
   document.getElementById('evol-patient').value=e.paciente_id;
   const d=new Date(e.fecha_evolucion);d.setMinutes(d.getMinutes()-d.getTimezoneOffset());document.getElementById('evol-date').value=d.toISOString().slice(0,16);
   STATE.evol.tipo=e.tipo;STATE.evol.tags=[...(e.tags||[])];STATE.evol.fields={...(e.contenido||{})};STATE.editEid=id;
+  const _sec=['psicosemiologia','diagnostico','plan','medicacion','proximaCita'];
+  STATE.evolExtraOpen=_sec.some(k=>e.contenido?.[k]?.trim());
   document.querySelectorAll('.type-chip').forEach(c=>c.classList.toggle('active',c.dataset.tipo===e.tipo));
   renderEvolFields(e.tipo);renderTags();toast('Evoluci\u00f3n cargada para editar','info',2000);
 }
@@ -1571,6 +1584,8 @@ async function dupEvol(id) {
   STATE.evol.tags   = JSON.parse(JSON.stringify(src.tags || []));
   STATE.evol.fields = JSON.parse(JSON.stringify(src.contenido || {}));
   STATE.editEid     = null;
+  const SEC=['psicosemiologia','diagnostico','plan','medicacion','proximaCita'];
+  STATE.evolExtraOpen = SEC.some(k=>src.contenido?.[k]?.trim());
   document.querySelectorAll('.type-chip').forEach(chip => chip.classList.toggle('active', chip.dataset.tipo === src.tipo));
   renderEvolFields(src.tipo);
   renderTags();
@@ -2286,11 +2301,7 @@ document.getElementById('btn-login').addEventListener('click', async () => {
   await onSignedIn();
 });
 
-document.getElementById('btn-use-local').addEventListener('click', () => {
-  hideAuthScreen();
-  updateSyncIndicator();
-  toast('Modo local — los datos no se sincronizan', 'info', 3000);
-});
+
 
 document.getElementById('btn-forgot-pwd').addEventListener('click', async () => {
   const email = document.getElementById('auth-email').value.trim();
