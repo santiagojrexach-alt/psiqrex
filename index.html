@@ -1028,6 +1028,7 @@ document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click
 /* ROUTER */
 async function switchTab(tab){
   STATE.currentTab=tab;
+  localStorage.setItem('psiqrex_lasttab', tab);
   document.querySelectorAll('.nav-tab,.mob-tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===tab));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+tab));
   if(tab==='pacientes'){showPatientList();}
@@ -1236,7 +1237,10 @@ async function renderPatientList(filter='') {
 function buildPatientBadges(p){
   const parts=[];const d=p.datos||{};
   if(d.sex||d.age)parts.push('<span class="badge badge-gray">'+esc([d.sex,d.age?d.age+'a':''].filter(Boolean).join(' \u00b7 '))+'</span>');
-  if(d.situation){const cls={Internado:'badge-green',Ambulatorio:'badge-accent',Guardia:'badge-amber',Alta:'badge-gray'}[d.situation]||'badge-gray';parts.push('<span class="badge '+cls+'">'+esc(d.situation+(d.ward?' \u00b7 '+d.ward:''))+'</span>');}
+  if(d.situation){const cls={Internado:'badge-green',Ambulatorio:'badge-accent',Guardia:'badge-amber',Alta:'badge-gray'}[d.situation]||'badge-gray';
+    parts.push('<span class="badge '+cls+'">'+esc(d.situation)+'</span>');
+    if(d.ward)parts.push('<span class="badge badge-gray">'+esc(d.ward)+'</span>');
+  }
   if(d.alerts)parts.push('<span class="badge badge-red">\u26a0 '+esc(d.alerts)+'</span>');
   return parts.join('');
 }
@@ -1537,6 +1541,7 @@ async function dupEvol(id) {
   await refreshEvolPatientSelect();
   document.getElementById('evol-patient').value = src.paciente_id;
   document.getElementById('evol-date').value = nowLocal();
+
   STATE.evol.tipo   = src.tipo;
   STATE.evol.tags   = JSON.parse(JSON.stringify(src.tags || []));
   STATE.evol.fields = JSON.parse(JSON.stringify(src.contenido || {}));
@@ -2406,6 +2411,11 @@ async function boot(){
   await renderPatientList();
   await refreshEvolPatientSelect();
   document.getElementById('evol-date').value = nowLocal();
+  // Restore last active tab
+  const lastTab = localStorage.getItem('psiqrex_lasttab');
+  if (lastTab && ['pacientes','evolucion','busqueda','config'].includes(lastTab)) {
+    switchTab(lastTab);
+  }
 
   // 7. Restore draft
   const draft = await db.get('drafts','evol');
@@ -2427,6 +2437,19 @@ async function boot(){
     try {
       const ok = SB.init(STATE.config.supabaseUrl, STATE.config.supabaseKey);
       if (ok) {
+        // Listen for session expiry
+        SB.client.auth.onAuthStateChange((event, session) => {
+          if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+            SB.user = null;
+            document.getElementById('btn-logout').classList.add('hidden');
+            setSyncStatus('', '');
+            toast('Sesión expirada — ingresá nuevamente', 'error', 5000);
+            setTimeout(() => showAuthScreen(), 1500);
+          }
+          if (event === 'SIGNED_IN' && session) {
+            SB.user = session.user;
+          }
+        });
         await new Promise(r => setTimeout(r, 400));
 
         // Handle magic link / invite token in URL hash
