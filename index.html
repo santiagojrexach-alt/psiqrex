@@ -702,10 +702,17 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
       <div style="font-size:24px;font-weight:700;letter-spacing:-0.03em">PsiqRex</div>
       <div style="font-size:13px;color:var(--t2);margin-top:6px">Historia clínica psiquiátrica</div>
     </div>
+    <!-- Auth mode toggle -->
+    <div style="display:flex;gap:8px;background:var(--s2);border-radius:10px;padding:4px">
+      <button id="btn-mode-login" style="flex:1;padding:8px;border:none;border-radius:8px;background:var(--s1);color:var(--t1);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);box-shadow:0 1px 3px rgba(0,0,0,0.15)">Iniciar sesión</button>
+      <button id="btn-mode-signup" style="flex:1;padding:8px;border:none;border-radius:8px;background:transparent;color:var(--t3);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans)">Registrarse</button>
+    </div>
     <div class="card">
       <div class="card-section">
         <div id="auth-error" style="display:none;background:var(--red-bg);border:1px solid rgba(248,113,113,0.2);border-radius:var(--rs);padding:10px 13px;font-size:12px;color:var(--red);margin-bottom:14px"></div>
         <div id="auth-sb-config" style="display:none"></div>
+        <!-- Signup name field (hidden in login mode) -->
+        <div id="signup-name-field" class="field" style="display:none"><label>Nombre</label><input type="text" id="auth-name" placeholder="Dr. Apellido" autocomplete="name"></div>
         <div class="field"><label>Email</label><input type="email" id="auth-email" placeholder="tu@email.com" autocomplete="email"></div>
         <div class="field"><label>Contraseña</label><input type="password" id="auth-password" placeholder="••••••••" autocomplete="current-password"></div>
         <button class="btn btn-primary" id="btn-login" style="width:100%;justify-content:center;margin-top:4px">
@@ -714,6 +721,12 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
         <button class="btn btn-ghost" id="btn-use-local" style="width:100%;justify-content:center;margin-top:8px;font-size:12px">
           Usar sin cuenta (solo local)
         </button>
+        <div style="text-align:center;margin-top:8px">
+          <button id="btn-forgot-pwd" style="background:none;border:none;color:var(--accent2);font-size:12px;cursor:pointer;font-family:var(--sans)">
+            ¿Olvidaste tu contraseña?
+          </button>
+        </div>
+        <div id="reset-msg" style="display:none;font-size:12px;color:var(--green);text-align:center;margin-top:6px;line-height:1.5"></div>
       </div>
     </div>
     <div style="text-align:center;font-size:12px;color:var(--t3)">
@@ -1292,17 +1305,29 @@ async function renderMedSummary(patientId) {
 }
 
 async function loadQuickNotes(patientId) {
-  const row = await db.get('config', 'qnotes_' + patientId);
+  const p   = await db.get('pacientes', patientId);
   const ta  = document.getElementById('detail-qnotes');
-  ta.value  = row?.value || '';
+  ta.value  = p?.datos?.qnotes || '';
   ta._pid   = patientId;
+}
+
+async function saveQuickNotes(pid, value) {
+  const p = await db.get('pacientes', pid);
+  if (!p) return;
+  p.datos = p.datos || {};
+  p.datos.qnotes = value;
+  p.updated_at = nowISO();
+  await db.put('pacientes', p);
+  // Sync to Supabase
+  if (SB.client && SB.user) await SB.upsertPaciente(p);
+  else await SyncQueue.push({ type:'upsert', entity:'paciente', data:p });
 }
 
 document.getElementById('btn-save-qnotes').addEventListener('click', async () => {
   const ta  = document.getElementById('detail-qnotes');
   const pid = ta._pid;
   if (!pid) return;
-  await db.put('config', { key: 'qnotes_' + pid, value: ta.value.trim() });
+  await saveQuickNotes(pid, ta.value.trim());
   toast('Nota guardada', 'ok', 1500);
 });
 
@@ -1311,7 +1336,7 @@ document.getElementById('detail-qnotes').addEventListener('blur', async () => {
   const ta  = document.getElementById('detail-qnotes');
   const pid = ta._pid;
   if (!pid) return;
-  await db.put('config', { key: 'qnotes_' + pid, value: ta.value.trim() });
+  await saveQuickNotes(pid, ta.value.trim());
 });
 
 let _tlSortAsc = false;
@@ -2232,9 +2257,30 @@ document.getElementById('btn-login').addEventListener('click', async () => {
   clearAuthError();
   const lbl = document.getElementById('login-label');
   lbl.innerHTML = '<span class="spinner"></span>';
-  const { user, error } = await SB.signIn(email, password);
-  lbl.textContent = 'Iniciar sesión';
-  if (error) { showAuthError(error); return; }
+
+  if (_authMode === 'signup') {
+    // Register new user
+    const name = document.getElementById('auth-name').value.trim();
+    const { data, error } = await SB.client.auth.signUp({
+      email, password,
+      options: { data: { display_name: name } }
+    });
+    lbl.textContent = 'Crear cuenta';
+    if (error) { showAuthError(error.message); return; }
+    if (data.user && !data.session) {
+      // Email confirmation required
+      clearAuthError();
+      document.getElementById('reset-msg').textContent = 'Revisá tu email para confirmar la cuenta.';
+      document.getElementById('reset-msg').style.display = 'block';
+      return;
+    }
+    SB.user = data.user;
+  } else {
+    const { user, error } = await SB.signIn(email, password);
+    lbl.textContent = 'Iniciar sesión';
+    if (error) { showAuthError(error); return; }
+  }
+
   hideAuthScreen();
   document.getElementById('btn-logout').classList.remove('hidden');
   await onSignedIn();
@@ -2244,6 +2290,30 @@ document.getElementById('btn-use-local').addEventListener('click', () => {
   hideAuthScreen();
   updateSyncIndicator();
   toast('Modo local — los datos no se sincronizan', 'info', 3000);
+});
+
+document.getElementById('btn-forgot-pwd').addEventListener('click', async () => {
+  const email = document.getElementById('auth-email').value.trim();
+  if (!email) {
+    showAuthError('Ingresá tu email primero');
+    return;
+  }
+  const btn = document.getElementById('btn-forgot-pwd');
+  btn.textContent = 'Enviando...';
+  btn.disabled = true;
+  try {
+    const { error } = await SB.client.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname,
+    });
+    if (error) throw error;
+    document.getElementById('reset-msg').textContent = 'Te enviamos un link a ' + email + '. Revisá tu casilla.';
+    document.getElementById('reset-msg').style.display = 'block';
+    clearAuthError();
+  } catch(err) {
+    showAuthError(err.message || 'Error al enviar el email');
+  }
+  btn.textContent = '¿Olvidaste tu contraseña?';
+  btn.disabled = false;
 });
 
 // Enter key on password field
@@ -2362,6 +2432,28 @@ document.getElementById('btn-set-password').addEventListener('click', async () =
   closeModal('modal-set-password');
   toast('Contraseña establecida. ¡Bienvenido a PsiqRex!', 'ok', 3000);
 });
+
+/* ── AUTH MODE TOGGLE ───────────────────────────────────── */
+let _authMode = 'login';
+
+function setAuthMode(mode) {
+  _authMode = mode;
+  const isLogin = mode === 'login';
+  document.getElementById('btn-mode-login').style.cssText = isLogin
+    ? 'flex:1;padding:8px;border:none;border-radius:8px;background:var(--s1);color:var(--t1);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);box-shadow:0 1px 3px rgba(0,0,0,0.15)'
+    : 'flex:1;padding:8px;border:none;border-radius:8px;background:transparent;color:var(--t3);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans)';
+  document.getElementById('btn-mode-signup').style.cssText = !isLogin
+    ? 'flex:1;padding:8px;border:none;border-radius:8px;background:var(--s1);color:var(--t1);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--sans);box-shadow:0 1px 3px rgba(0,0,0,0.15)'
+    : 'flex:1;padding:8px;border:none;border-radius:8px;background:transparent;color:var(--t3);font-size:13px;font-weight:500;cursor:pointer;font-family:var(--sans)';
+  document.getElementById('signup-name-field').style.display = isLogin ? 'none' : '';
+  document.getElementById('login-label').textContent = isLogin ? 'Iniciar sesión' : 'Crear cuenta';
+  document.getElementById('btn-forgot-pwd').style.display = isLogin ? '' : 'none';
+  clearAuthError();
+  document.getElementById('reset-msg').style.display = 'none';
+}
+
+document.getElementById('btn-mode-login').addEventListener('click', () => setAuthMode('login'));
+document.getElementById('btn-mode-signup').addEventListener('click', () => setAuthMode('signup'));
 
 /* ── KEYBOARD — only Escape to close modals/pickers ──────── */
 document.addEventListener('keydown', e => {
