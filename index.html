@@ -348,6 +348,9 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
 .tpl-picker-name{font-size:13px;font-weight:500;color:var(--t1)}
 .tpl-picker-empty{padding:20px 14px;text-align:center;font-size:12px;color:var(--t3)}
 .theme-btn{width:30px;height:30px;border-radius:8px;background:var(--s3);border:1px solid var(--b2);color:var(--t2);font-size:15px;cursor:pointer;display:grid;place-items:center;transition:background 0.15s,color 0.15s;flex-shrink:0}
+.accent-swatch{width:28px;height:28px;border-radius:50%;border:3px solid transparent;cursor:pointer;transition:transform .15s,border-color .15s;flex-shrink:0}
+.accent-swatch:hover{transform:scale(1.15)}
+.accent-swatch.active{border-color:var(--t1);transform:scale(1.1)}
 .theme-btn:hover{background:var(--s4);color:var(--t1)}
 .spinner{width:13px;height:13px;border:2px solid var(--b2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.65s linear infinite;display:inline-block;vertical-align:middle}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -466,6 +469,11 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
           <div class="med-summary" id="detail-med-list"></div>
           <div class="med-source" id="detail-med-source"></div>
         </div>
+        <!-- Active session banner -->
+        <div id="active-session-banner" style="display:none;align-items:center;gap:10px;padding:10px 14px;background:var(--adim);border:1px solid var(--adim2);border-radius:var(--rs);margin-bottom:12px">
+          <div style="flex:1;font-size:13px;color:var(--accent2)">&#x23F1; Sesión activa <span class="session-time"></span></div>
+          <button class="btn btn-ghost btn-sm" id="btn-continue-session">Continuar</button>
+        </div>
         <div class="card-section" id="detail-qnotes-section">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
             <div class="section-label" style="margin-bottom:0">Notas rápidas</div>
@@ -554,6 +562,9 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
     <div style="padding:18px 18px 60px;max-width:860px;margin:0 auto">
     <input type="text" style="display:none" autocomplete="username">
     <input type="password" style="display:none" autocomplete="current-password">
+    <div style="margin-bottom:6px;font-size:11px;color:var(--t3);font-family:var(--mono)">
+      Filtros: <span style="color:var(--accent2)">dx:</span>diagnóstico &nbsp; <span style="color:var(--accent2)">med:</span>medicación &nbsp; <span style="color:var(--accent2)">tipo:</span>guardia|internación|consultorios &nbsp; <span style="color:var(--accent2)">nombre:</span>paciente
+    </div>
     <div class="search-big">
       <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
       <input type="text" id="search-global" placeholder="Buscar en evoluciones, diagn&#xF3;sticos, medicaci&#xF3;n..." autocomplete="off">
@@ -627,6 +638,17 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
         <div class="acc-body" id="acc-about">
           <div class="card">
             <div class="cfg-row"><div><div class="cfg-label">PsiqRex</div><div class="cfg-sub">v3.0 · Residencia de psiquiatría · Uso personal</div></div></div>
+            <div class="cfg-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+              <div><div class="cfg-label">Color de acento</div><div class="cfg-sub">Personalizá el color principal</div></div>
+              <div id="accent-swatches" style="display:flex;gap:8px;flex-wrap:wrap">
+                <button class="accent-swatch active" data-accent="#7c6af7" data-accent2="#6355e0" style="background:#7c6af7" title="Violeta"></button>
+                <button class="accent-swatch" data-accent="#60a5fa" data-accent2="#3b82f6" style="background:#60a5fa" title="Azul"></button>
+                <button class="accent-swatch" data-accent="#34d399" data-accent2="#10b981" style="background:#34d399" title="Verde"></button>
+                <button class="accent-swatch" data-accent="#f472b6" data-accent2="#ec4899" style="background:#f472b6" title="Rosa"></button>
+                <button class="accent-swatch" data-accent="#fb923c" data-accent2="#f97316" style="background:#fb923c" title="Naranja"></button>
+                <button class="accent-swatch" data-accent="#f87171" data-accent2="#ef4444" style="background:#f87171" title="Rojo"></button>
+              </div>
+            </div>
             <div class="cfg-row"><div><div class="cfg-label">Tutorial interactivo</div><div class="cfg-sub">Recorré las funciones paso a paso</div></div><button class="btn btn-ghost btn-sm" id="btn-start-tutorial">Ver tutorial</button></div>
             <div class="cfg-row"><div><div class="cfg-label">Atajos de teclado</div><div class="cfg-sub">Ctrl / ⌘ + tecla</div></div></div>
           </div>
@@ -1084,6 +1106,23 @@ function applyTheme(light){
   document.documentElement.classList.toggle('light', light);
   document.getElementById('btn-theme').textContent = light ? '\u2600\ufe0f' : '\u263D';
 }
+
+function applyAccent(accent, accent2) {
+  const root = document.documentElement;
+  root.style.setProperty('--accent', accent);
+  root.style.setProperty('--accent2', accent2);
+  const r=parseInt(accent.slice(1,3),16), g=parseInt(accent.slice(3,5),16), b=parseInt(accent.slice(5,7),16);
+  root.style.setProperty('--adim', 'rgba('+r+','+g+','+b+',0.15)');
+  root.style.setProperty('--adim2','rgba('+r+','+g+','+b+',0.25)');
+  localStorage.setItem('psiqrex_accent', accent);
+  localStorage.setItem('psiqrex_accent2', accent2);
+  document.querySelectorAll('.accent-swatch').forEach(s=>s.classList.toggle('active', s.dataset.accent===accent));
+}
+
+function loadSavedAccent() {
+  const a=localStorage.getItem('psiqrex_accent'), a2=localStorage.getItem('psiqrex_accent2');
+  if(a && a2) applyAccent(a, a2);
+}
 document.getElementById('btn-theme').addEventListener('click', () => {
   const isLight = document.documentElement.classList.toggle('light');
   document.getElementById('btn-theme').textContent = isLight ? '\u2600\ufe0f' : '\u263D';
@@ -1301,6 +1340,12 @@ function buildPatientBadges(p){
 }
 document.getElementById('search-patients').addEventListener('input',e=>{if(STATE.db)renderPatientList(e.target.value);});
 document.getElementById('btn-new-patient').addEventListener('click',openNewPatientModal);
+document.getElementById('active-session-banner')?.addEventListener('click', e => {
+  if (e.target.id === 'btn-continue-session') {
+    const evolId = document.getElementById('active-session-banner').dataset.evolId;
+    if (evolId) editEvol(evolId);
+  }
+});
 document.getElementById('btn-back-patients').addEventListener('click',showPatientList);
 
 /* PATIENT DETAIL */
@@ -1318,6 +1363,8 @@ async function openPatientDetail(id){
   await renderMedSummary(id);
   // Quick notes
   await loadQuickNotes(id);
+  // Check for active session (evolution in last 2 hours)
+  await checkActiveSession(id);
   document.querySelectorAll('#filter-chips .chip').forEach(c=>c.classList.toggle('active',c.dataset.filter==='todas'));
   document.getElementById('date-from').value = '';
   document.getElementById('date-to').value   = '';
@@ -1396,6 +1443,23 @@ document.getElementById('detail-qnotes')?.addEventListener('blur', async () => {
 
 let _tlSortAsc = false;
 let _tlCompact = false;
+
+async function checkActiveSession(pid) {
+  const banner = document.getElementById('active-session-banner');
+  if (!banner) return;
+  const evols = await db.byIndex('evoluciones','paciente_id',pid);
+  if (!evols.length) { banner.style.display='none'; return; }
+  evols.sort((a,b)=>new Date(b.fecha_evolucion)-new Date(a.fecha_evolucion));
+  const latest = evols[0];
+  const age = Date.now() - new Date(latest.fecha_evolucion).getTime();
+  if (age < 2 * 3600 * 1000) {
+    banner.style.display='flex';
+    banner.querySelector('.session-time').textContent = relTime(latest.fecha_evolucion);
+    banner.dataset.evolId = latest.id;
+  } else {
+    banner.style.display='none';
+  }
+}
 
 async function renderTimeline(pid, filter) {
   showTimelineSkeleton();
@@ -1732,6 +1796,26 @@ function searchFromTag(valor, tipo) {
 async function runSearch(query) {
   const results = document.getElementById('search-results');
   const countEl = document.getElementById('sr-count');
+  // Parse filter syntax: dx:, med:, tipo:, nombre:
+  const fm = query.match(/^(dx|med|tipo|nombre):(.+)/i);
+  if (fm) {
+    const field=fm[1].toLowerCase(), val=fm[2].trim().toLowerCase();
+    showSearchSkeleton();
+    const pts=await db.all('pacientes'), evols=await db.all('evoluciones');
+    const ptMap=Object.fromEntries(pts.map(p=>[p.id,p]));
+    const matched=evols.filter(e=>{
+      const con=e.contenido||{}, pt=ptMap[e.paciente_id];
+      if(field==='dx')     return (con.diagnostico||'').toLowerCase().includes(val);
+      if(field==='med')    return (con.medicacion||'').toLowerCase().includes(val);
+      if(field==='tipo')   return e.tipo.toLowerCase().includes(val);
+      if(field==='nombre') return (pt?.name||'').toLowerCase().includes(val);
+    });
+    countEl.textContent=matched.length+' resultado'+(matched.length!==1?'s':'');
+    countEl.classList.toggle('hidden',!matched.length);
+    if(!matched.length){results.innerHTML='<div class="empty-state"><div class="empty-icon">&#x1F50D;</div><h3>Sin resultados</h3><p>Probá con otro filtro.</p></div>';return;}
+    results.innerHTML=matched.map(e=>{const pt=ptMap[e.paciente_id];return '<div class="card" style="margin-bottom:8px"><div class="card-section" style="padding:12px 16px"><div style="font-weight:600;margin-bottom:4px">'+esc(pt?.name||'')+'</div><div style="font-size:12px;color:var(--t3)">'+formatDate(e.fecha_evolucion)+'</div></div></div>';}).join('');
+    return;
+  }
   if (!query.trim() && !STATE.gTagFilter && STATE.gfilter === 'todo') {
     results.innerHTML = `<div class="empty-state"><div class="empty-icon">&#x1F50D;</div><h3>Busc&#xE1; cualquier cosa</h3><p>Texto libre, diagn&#xF3;sticos, medicaci&#xF3;n, CIE-10, alertas.</p></div>`;
     countEl.classList.add('hidden'); return;
@@ -1841,6 +1925,10 @@ async function renderConfigStats(){
   }
 }
 document.addEventListener('click', async e => {
+  if (e.target.classList.contains('accent-swatch')) {
+    applyAccent(e.target.dataset.accent, e.target.dataset.accent2);
+    return;
+  }
   if (e.target.id === 'btn-sync-now') {
     if (!SB.client || !SB.user) { toast('Iniciá sesión primero','error'); return; }
     await fullSync();
@@ -2327,6 +2415,7 @@ document.getElementById('tut-close').addEventListener('click', endTutorial);
 
 // Config page buttons
 document.addEventListener('click', e => {
+  if (e.target.classList.contains('accent-swatch')) { applyAccent(e.target.dataset.accent, e.target.dataset.accent2); return; }
   if (e.target.id === 'btn-start-tutorial') startTutorial();
 });
 
@@ -2573,7 +2662,7 @@ document.addEventListener('keydown', e => {
 /* DEMO DATA */
 
 /* BOOT */
-async function bootTheme(){applyTheme(localStorage.getItem('psiqrex_theme')==='light');}
+async function bootTheme(){applyTheme(localStorage.getItem('psiqrex_theme')==='light');loadSavedAccent();}
 async function bootDB(){
   STATE.db=await initDB();
   STATE.setConfig('supabaseUrl',SUPABASE_URL);STATE.setConfig('supabaseKey',SUPABASE_KEY);
