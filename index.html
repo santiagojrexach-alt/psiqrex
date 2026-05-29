@@ -137,11 +137,6 @@ textarea{resize:vertical;line-height:1.65}select{cursor:pointer}select option{ba
 .error-banner{background:var(--red-bg);border:1px solid rgba(248,113,113,0.25);border-radius:var(--rs);padding:12px 16px;font-size:13px;color:var(--red);display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .error-banner svg{flex-shrink:0}
 .pt-evol-count{font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:3px;display:flex;align-items:center;gap:4px}
-.agenda-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--s2);border-radius:var(--rs);border:1px solid var(--b1);cursor:pointer;transition:background .15s}
-.agenda-item:hover{background:var(--s3)}
-.agenda-date{font-family:var(--mono);font-size:11px;color:var(--accent2);min-width:90px;flex-shrink:0}
-.agenda-name{font-size:13px;font-weight:500;flex:1}
-.agenda-nota{font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
 .pt-evol-count span{background:var(--s3);border:1px solid var(--b2);border-radius:4px;padding:1px 6px;color:var(--t2);font-weight:500}
 .pt-avatar{width:38px;height:38px;border-radius:10px;background:var(--adim);border:1px solid rgba(124,106,247,0.2);display:grid;place-items:center;font-size:14px;font-weight:700;color:var(--accent2);flex-shrink:0;font-family:var(--mono)}
 .pt-info{flex:1;min-width:0}
@@ -198,6 +193,25 @@ textarea{resize:vertical;line-height:1.65}select{cursor:pointer}select option{ba
 .evol-act-btn{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:500;font-family:var(--sans);border:1px solid var(--b2);background:transparent;color:var(--t3);cursor:pointer;transition:all 0.15s}
 .evol-act-btn:hover{background:var(--s3);color:var(--t1)}
 .evol-act-btn.del:hover{background:var(--red-bg);color:var(--red);border-color:rgba(248,113,113,0.25)}
+/* Agenda */
+.agenda-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--s2);border-radius:var(--rs);border:1px solid var(--b1);cursor:pointer;transition:background .15s}
+.agenda-item:hover{background:var(--s3)}
+.agenda-date{font-family:var(--mono);font-size:11px;color:var(--accent2);min-width:90px;flex-shrink:0}
+.agenda-name{font-size:13px;font-weight:500;flex:1}
+.agenda-nota{font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
+/* Compact timeline */
+.evol-compact .evol-body{display:none}
+.evol-compact .evol-tags-row{display:none}
+.evol-compact .evol-actions{display:none}
+.evol-compact .evol-head{cursor:pointer}
+.evol-compact .card-section{padding:8px 14px}
+.evol-compact .evol-summary{font-size:12px;color:var(--t2);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Swipe actions */
+.pt-swipe-actions{position:absolute;right:0;top:0;bottom:0;display:flex;align-items:stretch;transform:translateX(100%);transition:transform .2s cubic-bezier(.4,0,.2,1)}
+.pt-swipe-actions.visible{transform:translateX(0)}
+.pt-swipe-btn{display:flex;align-items:center;justify-content:center;padding:0 14px;font-size:12px;font-weight:600;border:none;cursor:pointer;white-space:nowrap}
+.pt-swipe-evol{background:var(--accent);color:#fff}
+.pt-swipe-edit{background:var(--s3);color:var(--t1)}
 .evol-act-btn.dup:hover{background:var(--adim);color:var(--accent2);border-color:rgba(124,106,247,0.25)}
 #tab-evolucion.active{padding:18px 18px 60px;display:grid;grid-template-columns:1fr 228px;gap:14px;max-width:980px;margin:0 auto}
 @media(max-width:700px){#tab-evolucion.active{grid-template-columns:1fr}#evol-sidebar{display:none}}
@@ -404,10 +418,7 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
         <div><div class="page-title">Pacientes</div><div class="page-sub" id="pt-count-label"></div></div>
         <button class="btn btn-primary" id="btn-new-patient">+ Nuevo paciente</button>
       </div>
-      <div id="agenda-section" style="display:none;margin-bottom:16px">
-        <div class="section-label" style="margin-bottom:8px">Próximas citas</div>
-        <div id="agenda-list" style="display:flex;flex-direction:column;gap:6px"></div>
-      </div>
+      <div id="agenda-section" style="display:none;margin-bottom:16px"><div class="section-label" style="margin-bottom:8px">Próximas citas</div><div id="agenda-list" style="display:flex;flex-direction:column;gap:6px"></div></div>
       <input type="text" style="display:none" autocomplete="username">
       <input type="password" style="display:none" autocomplete="current-password">
       <div class="search-row">
@@ -466,14 +477,7 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
           </div>
         </div>
       </div>
-      <div class="card" id="detail-summary-card" style="margin-bottom:14px;display:none">
-        <div class="card-section" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-          <div><div class="section-label" style="margin-bottom:3px">Medicación</div><div id="summary-med" style="font-size:12px;color:var(--t1);line-height:1.5">—</div></div>
-          <div><div class="section-label" style="margin-bottom:3px">Próxima cita</div><div id="summary-cita" style="font-size:12px;color:var(--t1);line-height:1.5">—</div></div>
-          <div><div class="section-label" style="margin-bottom:3px">Diagnóstico</div><div id="summary-dx" style="font-size:12px;color:var(--t1);line-height:1.5">—</div></div>
-          <div><div class="section-label" style="margin-bottom:3px">Última evolución</div><div id="summary-last" style="font-size:12px;color:var(--t1);line-height:1.5">—</div></div>
-        </div>
-      </div>
+      <div class="card" id="detail-summary-card" style="margin-bottom:14px;display:none"><div class="card-section" style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><div class="section-label" style="margin-bottom:3px">Medicación</div><div id="summary-med" style="font-size:12px;color:var(--t1);line-height:1.5">—</div></div><div><div class="section-label" style="margin-bottom:3px">Próxima cita</div><div id="summary-cita" style="font-size:12px;color:var(--t1);line-height:1.5">—</div></div><div><div class="section-label" style="margin-bottom:3px">Diagnóstico</div><div id="summary-dx" style="font-size:12px;color:var(--t1);line-height:1.5">—</div></div><div><div class="section-label" style="margin-bottom:3px">Última evolución</div><div id="summary-last" style="font-size:12px;color:var(--t1);line-height:1.5">—</div></div></div></div>
       <div class="date-filter-row" id="date-filter-row">
         <label>Desde</label>
         <input type="date" id="date-from">
@@ -485,12 +489,14 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
         <div style="display:flex;align-items:center;gap:10px">
           <div class="timeline-count" id="evol-count-label"></div>
           <button id="tl-sort-btn" class="btn btn-ghost btn-sm" style="padding:4px 9px;font-size:11px" title="Cambiar orden">&#x2193; Más recientes</button>
+          <button id="tl-density-btn" class="btn btn-ghost btn-sm" style="padding:4px 9px;font-size:11px">&#x25A4; Compacto</button>
         </div>
         <div class="filter-chips" id="filter-chips">
           <button class="chip active" data-filter="todas">Todas</button>
           <button class="chip" data-filter="guardia">Guardia</button>
           <button class="chip" data-filter="internacion">Internaci&#xF3;n</button>
           <button class="chip" data-filter="consultorios">Consultorios</button>
+          <button class="chip" data-filter="medicacion">💊 Medicación</button>
         </div>
       </div>
       <div id="evol-timeline"></div>
@@ -922,8 +928,8 @@ const SyncQueue = {
     // Deduplicate: replace existing op for same id
     const filtered = queue.filter(q => !(q.entity === op.entity && q.data?.id === op.data?.id));
     filtered.push({ ...op, ts: Date.now() });
-    const capped = filtered.length > 500 ? filtered.slice(-500) : filtered;
-    await db.put('config', { key: 'sync_queue', value: JSON.stringify(capped) });
+    const capped=filtered.length>500?filtered.slice(-500):filtered;
+    await db.put('config',{key:'sync_queue',value:JSON.stringify(capped)});
   },
 
   async get() {
@@ -996,21 +1002,18 @@ const STATE=(() => {
 
 /* DB */
 const DB_VERSION = 2;
-
 function initDB(){
   return new Promise((res,rej)=>{
-    const req=indexedDB.open('psiqrex_v2', DB_VERSION);
+    const req=indexedDB.open('psiqrex_v2',DB_VERSION);
     req.onupgradeneeded=e=>{
-      const db=e.target.result;
-      const oldVer=e.oldVersion;
-      if(oldVer < 1){
+      const db=e.target.result,oldVer=e.oldVersion;
+      if(oldVer<1){
         if(!db.objectStoreNames.contains('pacientes'))db.createObjectStore('pacientes',{keyPath:'id'}).createIndex('updated_at','updated_at');
         if(!db.objectStoreNames.contains('evoluciones')){const s=db.createObjectStore('evoluciones',{keyPath:'id'});s.createIndex('paciente_id','paciente_id');s.createIndex('updated_at','updated_at');}
         if(!db.objectStoreNames.contains('templates'))db.createObjectStore('templates',{keyPath:'id'});
         if(!db.objectStoreNames.contains('drafts'))db.createObjectStore('drafts',{keyPath:'key'});
         if(!db.objectStoreNames.contains('config'))db.createObjectStore('config',{keyPath:'key'});
       }
-      // v2+: add migration blocks here as needed
     };
     req.onsuccess=e=>res(e.target.result);
     req.onerror=()=>rej(req.error);
@@ -1190,35 +1193,22 @@ function showPatientListSkeleton() {
   ).join('');
 }
 
-async function renderAgenda() {
-  const section=document.getElementById('agenda-section');
-  const list=document.getElementById('agenda-list');
+async function renderAgenda(){
+  const section=document.getElementById('agenda-section'),list=document.getElementById('agenda-list');
   if(!section||!list)return;
-  const pts=await db.all('pacientes');
-  const evols=await db.all('evoluciones');
+  const pts=await db.all('pacientes'),evols=await db.all('evoluciones');
   const ptMap=Object.fromEntries(pts.map(p=>[p.id,p]));
   evols.sort((a,b)=>new Date(b.fecha_evolucion)-new Date(a.fecha_evolucion));
   const seen=new Set(),items=[];
   for(const ev of evols){
-    if(seen.has(ev.paciente_id))continue;
-    seen.add(ev.paciente_id);
-    const cita=(ev.contenido?.proximaCita||'').trim();
-    if(!cita)continue;
-    const pt=ptMap[ev.paciente_id];
-    if(pt)items.push({pt,cita});
+    if(seen.has(ev.paciente_id))continue;seen.add(ev.paciente_id);
+    const cita=(ev.contenido?.proximaCita||'').trim();if(!cita)continue;
+    const pt=ptMap[ev.paciente_id];if(pt)items.push({pt,cita});
   }
   if(!items.length){section.style.display='none';return;}
   section.style.display='';
-  list.innerHTML=items.slice(0,5).map(({pt,cita})=>
-    '<div class="agenda-item" data-pid="'+pt.id+'">'+
-    '<span class="agenda-date">'+esc(cita.slice(0,14))+'</span>'+
-    '<span class="agenda-name">'+esc(pt.name)+'</span>'+
-    '<span class="agenda-nota">'+esc(cita.length>14?cita.slice(14).trim():'')+'</span>'+
-    '</div>'
-  ).join('');
-  list.querySelectorAll('.agenda-item').forEach(el=>
-    el.addEventListener('click',()=>openPatientDetail(el.dataset.pid))
-  );
+  list.innerHTML=items.slice(0,5).map(({pt,cita})=>'<div class="agenda-item" data-pid="'+pt.id+'"><span class="agenda-date">'+esc(cita.slice(0,14))+'</span><span class="agenda-name">'+esc(pt.name)+'</span><span class="agenda-nota">'+esc(cita.length>14?cita.slice(14).trim():'')+'</span></div>').join('');
+  list.querySelectorAll('.agenda-item').forEach(el=>el.addEventListener('click',()=>openPatientDetail(el.dataset.pid)));
 }
 
 async function renderPatientList(filter='') {
@@ -1282,8 +1272,7 @@ async function renderPatientList(filter='') {
       </div>
       <div class="pt-time">${relTime(p.updated_at)}</div>
       <button class="pt-edit-btn" data-edit-id="${p.id}">Editar</button>
-      <div class="pt-chevron">&rsaquo;</div>
-    </div>`;
+      <div class="pt-chevron">&rsaquo;</div><div class="pt-swipe-actions"><button class="pt-swipe-btn pt-swipe-evol" data-swipe-evol="${p.id}">+ Evolución</button><button class="pt-swipe-btn pt-swipe-edit" data-swipe-edit="${p.id}">Editar</button></div></div>`;
   }).join('');
 
   list.querySelectorAll('.pt-card').forEach(c =>
@@ -1357,20 +1346,19 @@ async function renderMedSummary(patientId) {
   srcEl.textContent = `\u00daltima actualizaci\u00f3n: ${tipo} del ${formatDateShort(latest.fecha_evolucion)}`;
 }
 
-async function refreshSummaryCard(pid) {
-  const card = document.getElementById('detail-summary-card');
-  if (!card) return;
-  const evols = await db.byIndex('evoluciones', 'paciente_id', pid);
-  if (!evols.length) { card.style.display='none'; return; }
+async function refreshSummaryCard(pid){
+  const card=document.getElementById('detail-summary-card');
+  if(!card)return;
+  const evols=await db.byIndex('evoluciones','paciente_id',pid);
+  if(!evols.length){card.style.display='none';return;}
   evols.sort((a,b)=>new Date(b.fecha_evolucion)-new Date(a.fecha_evolucion));
-  const con = evols[0].contenido || {};
+  const con=evols[0].contenido||{};
   card.style.display='';
-  document.getElementById('summary-med').textContent  = con.medicacion?.trim()  || '—';
-  document.getElementById('summary-cita').textContent = con.proximaCita?.trim() || '—';
-  document.getElementById('summary-dx').textContent   = con.diagnostico?.trim() || '—';
-  document.getElementById('summary-last').textContent = formatDate(evols[0].fecha_evolucion);
+  document.getElementById('summary-med').textContent=con.medicacion?.trim()||'—';
+  document.getElementById('summary-cita').textContent=con.proximaCita?.trim()||'—';
+  document.getElementById('summary-dx').textContent=con.diagnostico?.trim()||'—';
+  document.getElementById('summary-last').textContent=formatDate(evols[0].fecha_evolucion);
 }
-
 async function loadQuickNotes(patientId) {
   const p   = await db.get('pacientes', patientId);
   const ta  = document.getElementById('detail-qnotes');
@@ -1407,6 +1395,7 @@ document.getElementById('detail-qnotes')?.addEventListener('blur', async () => {
 });
 
 let _tlSortAsc = false;
+let _tlCompact = false;
 
 async function renderTimeline(pid, filter) {
   showTimelineSkeleton();
@@ -1414,6 +1403,17 @@ async function renderTimeline(pid, filter) {
   evols.sort((a,b)=> _tlSortAsc
     ? new Date(a.fecha_evolucion)-new Date(b.fecha_evolucion)
     : new Date(b.fecha_evolucion)-new Date(a.fecha_evolucion));
+  if(filter==='medicacion'){
+    const medEvols=evols.filter(e=>e.contenido?.medicacion?.trim());
+    medEvols.sort((a,b)=>_tlSortAsc?new Date(a.fecha_evolucion)-new Date(b.fecha_evolucion):new Date(b.fecha_evolucion)-new Date(a.fecha_evolucion));
+    document.getElementById('evol-count-label').textContent=medEvols.length+' registro'+(medEvols.length!==1?'s':'')+' de medicación';
+    tl.innerHTML=medEvols.length?medEvols.map(e=>{
+      const tipo={guardia:'Guardia',internacion:'Internación',consultorios:'Consultorios'}[e.tipo]||e.tipo;
+      const pillCls={guardia:'pill-amber',internacion:'pill-green',consultorios:'pill-accent'}[e.tipo]||'pill-gray';
+      return '<div class="card" style="margin-bottom:10px"><div class="card-section" style="padding:12px 16px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span class="evol-pill '+pillCls+'">'+tipo+'</span><span style="font-size:11px;color:var(--t3);font-family:var(--mono)">'+formatDate(e.fecha_evolucion)+'</span></div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap">'+esc(e.contenido.medicacion)+'</div></div></div>';
+    }).join(''):'<div class="empty-state"><div class="empty-icon">💊</div><div class="empty-title">Sin registros de medicación</div><div class="empty-sub">Las evoluciones que incluyan medicación aparecerán aquí.</div></div>';
+    return;
+  }
   let filtered=filter==='todas'?evols:evols.filter(e=>e.tipo===filter);
   const df = document.getElementById('date-from')?.value;
   const dt = document.getElementById('date-to')?.value;
@@ -1426,7 +1426,7 @@ async function renderTimeline(pid, filter) {
   const tl=document.getElementById('evol-timeline');
   if(!filtered.length){tl.innerHTML='<div class="empty-state"><div class="empty-icon">&#x1F4CB;</div><h3>'+(filter!=='todas'?'Sin evoluciones de este tipo':'Sin evoluciones a\u00fan')+'</h3><p>Cre\u00e1 la primera con el bot\u00f3n de arriba.</p></div>';return;}
   tl.innerHTML=filtered.map(e=>buildEvolCard(e)).join('');
-  tl.querySelectorAll('.evol-act-btn').forEach(btn=>btn.addEventListener('click',()=>{const{action,id}=btn.dataset;if(action==='edit')editEvol(id);if(action==='delete')deleteEvol(id);if(action==='dup')dupEvol(id);}));
+  tl.querySelectorAll('.evol-act-btn').forEach(btn=>btn.addEventListener('click',()=>{const{action,id}=btn.dataset;if(action==='edit')editEvol(id);if(action==='delete')deleteEvol(id);if(action==='dup')dupEvol(id);if(action==='pdf')exportSingleEvolPDF(id);}));
   await refreshSummaryCard(pid);
   tl.querySelectorAll('.tag-clickable').forEach(t=>
     t.addEventListener('click', e => { e.stopPropagation(); searchFromTag(t.dataset.val, t.dataset.tipo); })
@@ -1439,7 +1439,7 @@ function buildEvolCard(e){
   const tags=(e.tags||[]).map(t=>
     `<span class="tag tag-${t.tipo} tag-clickable" data-val="${esc(t.valor)}" data-tipo="${t.tipo}">${esc(t.valor)}</span>`
   ).join('');
-  return `<div class="card evol-card"><div class="card-section"><div class="evol-head"><span class="evol-pill ${pillCls}">${tipoPretty}</span><span class="evol-datetime">${formatDate(e.fecha_evolucion)}</span></div><div class="evol-body">${content}</div>${tags?'<div class="evol-tags-row">'+tags+'</div>':''}<div class="evol-actions"><button class="evol-act-btn dup" data-action="dup" data-id="${e.id}">Duplicar</button><button class="evol-act-btn" data-action="edit" data-id="${e.id}">Editar</button><button class="evol-act-btn del" data-action="delete" data-id="${e.id}">Eliminar</button></div></div></div>`;
+  return `<div class="card evol-card${_tlCompact?' evol-compact':''}"><div class="card-section"><div class="evol-head"><span class="evol-pill ${pillCls}">${tipoPretty}</span><span class="evol-datetime">${formatDate(e.fecha_evolucion)}</span></div><div class="evol-body">${content}</div>${tags?'<div class="evol-tags-row">'+tags+'</div>':''}<div class="evol-actions"><button class="evol-act-btn dup" data-action="dup" data-id="${e.id}">Duplicar</button><button class="evol-act-btn" data-action="pdf" data-id="${e.id}">PDF</button><button class="evol-act-btn" data-action="edit" data-id="${e.id}">Editar</button><button class="evol-act-btn del" data-action="delete" data-id="${e.id}">Eliminar</button></div></div></div>`;
 }
 document.getElementById('tl-sort-btn')?.addEventListener('click', () => {
   _tlSortAsc = !_tlSortAsc;
@@ -1512,10 +1512,7 @@ document.getElementById('btn-save-patient').addEventListener('click',async()=>{
   if(STATE.editPid){const ex=await db.get('pacientes',STATE.editPid);patient={...ex,name,datos,updated_at:now};}
   else{patient={id:uuid(),name,datos,created_at:now,updated_at:now};}
   await db.put('pacientes',patient);
-  try {
-    if(SB.client && SB.user) await SB.upsertPaciente(patient);
-    else await SyncQueue.push({type:'upsert',entity:'paciente',data:patient});
-  } catch(e) { await SyncQueue.push({type:'upsert',entity:'paciente',data:patient}); }
+  try{if(SB.client&&SB.user)await SB.upsertPaciente(patient);else await SyncQueue.push({type:'upsert',entity:'paciente',data:patient});}catch(e){await SyncQueue.push({type:'upsert',entity:'paciente',data:patient});}
   closeModal('modal-patient');
   toast(STATE.editPid?'Paciente actualizado':'Paciente creado');
   if(STATE.pid===patient.id)await openPatientDetail(patient.id);else await renderPatientList(document.getElementById('search-patients').value);
@@ -1607,10 +1604,7 @@ async function saveEvolucion(){
   const isEdit=!!STATE.editEid;const existing=isEdit?await db.get('evoluciones',STATE.editEid):null;
   const evol={id:isEdit?STATE.editEid:uuid(),paciente_id:patientId,tipo:STATE.evol.tipo,contenido,tags:[...STATE.evol.tags],fecha_evolucion:new Date(dateRaw).toISOString(),created_at:existing?.created_at||nowISO(),updated_at:nowISO()};
   await db.put('evoluciones',evol);
-  try {
-    if(SB.client && SB.user) await SB.upsertEvolucion(evol);
-    else await SyncQueue.push({type:'upsert',entity:'evolucion',data:evol});
-  } catch(e) { await SyncQueue.push({type:'upsert',entity:'evolucion',data:evol}); }
+  try{if(SB.client&&SB.user)await SB.upsertEvolucion(evol);else await SyncQueue.push({type:'upsert',entity:'evolucion',data:evol});}catch(e){await SyncQueue.push({type:'upsert',entity:'evolucion',data:evol});}
   const p=await db.get('pacientes',patientId);
   if(p){p.updated_at=nowISO();await db.put('pacientes',p);
     if(SB.client && SB.user) await SB.upsertPaciente(p);
@@ -1913,6 +1907,34 @@ document.getElementById('btn-save-template').addEventListener('click',async()=>{
 /* ── PDF ──────────────────────────────────────────────────── */
 document.getElementById('btn-pdf').addEventListener('click', exportPDF);
 
+async function exportSingleEvolPDF(evolId){
+  const ev=await db.get('evoluciones',evolId);if(!ev)return;
+  const pt=await db.get('pacientes',ev.paciente_id);if(!pt)return;
+  const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,M=20,CW=W-M*2;let y=M;
+  const addText=(txt,sz=10,bold=false,color=[20,20,20])=>{
+    doc.setFontSize(sz);doc.setFont('helvetica',bold?'bold':'normal');doc.setTextColor(...color);
+    const lines=doc.splitTextToSize(String(txt||''),CW);
+    if(y+lines.length*sz*0.44>280){doc.addPage();y=M;}
+    doc.text(lines,M,y);y+=lines.length*(sz*0.44)+1;
+  };
+  const gap=(n=4)=>{y+=n;};
+  doc.setFillColor(17,17,19);doc.rect(0,0,W,22,'F');
+  doc.setFontSize(13);doc.setFont('helvetica','bold');doc.setTextColor(255,255,255);
+  doc.text('Historia Clínica Digital',M,14);y=30;
+  addText(pt.name,14,true);gap(1);
+  const d=pt.datos||{};
+  const meta=[d.sex,d.age?d.age+'a':null,d.situation,d.ward].filter(Boolean).join(' · ');
+  if(meta)addText(meta,10,false,[100,100,120]);
+  gap(3);doc.setDrawColor(180,180,200);doc.line(M,y,W-M,y);y+=6;
+  const tipo={guardia:'Guardia',internacion:'Internación',consultorios:'Consultorios externos'}[ev.tipo]||ev.tipo;
+  addText(tipo+' — '+formatDate(ev.fecha_evolucion),11,true,[80,70,200]);gap(3);
+  const LABELS={motivo:'Motivo de consulta',evolucion:'Evolución',psicosemiologia:'Psicosemiología',diagnostico:'Diagnóstico',plan:'Plan / conducta',medicacion:'Medicación',proximaCita:'Próxima cita'};
+  for(const[k,lbl]of Object.entries(LABELS)){const val=(ev.contenido?.[k]||'').trim();if(!val)continue;addText(lbl,9,true,[80,80,100]);gap(1);addText(val,10);gap(4);}
+  if(ev.tags?.length){gap(2);addText('Etiquetas',9,true,[80,80,100]);gap(1);addText(ev.tags.map(t=>'['+t.type.toUpperCase()+'] '+t.value).join('  '),9);}
+  doc.setFontSize(8);doc.setTextColor(160,160,180);doc.text('PsiqRex',M,290);
+  doc.save(safeName(pt.name)+'_'+formatDateShort(ev.fecha_evolucion)+'.pdf');
+}
 async function exportPDF() {
   const id = STATE.pid; if (!id) return;
   const lbl = document.getElementById('pdf-label');
@@ -2470,7 +2492,7 @@ async function fullSync() {
       }
     }
 
-    await db.put('config', { key: 'last_sync_at', value: new Date().toISOString() });
+    await db.put('config',{key:'last_sync_at',value:new Date().toISOString()});
     hideSyncBar();
     setSyncStatus('ok', 'Supabase');
     toast('Sincronización completa', 'ok', 2500);
@@ -2551,90 +2573,52 @@ document.addEventListener('keydown', e => {
 /* DEMO DATA */
 
 /* BOOT */
-async function bootTheme() {
-  applyTheme(localStorage.getItem('psiqrex_theme') === 'light');
+async function bootTheme(){applyTheme(localStorage.getItem('psiqrex_theme')==='light');}
+async function bootDB(){
+  STATE.db=await initDB();
+  STATE.setConfig('supabaseUrl',SUPABASE_URL);STATE.setConfig('supabaseKey',SUPABASE_KEY);
+  const t=await db.all('templates');if(!t.length)for(const x of DEFAULT_TEMPLATES)await db.put('templates',x);
 }
-
-async function bootDB() {
-  STATE.db = await initDB();
-  STATE.setConfig('supabaseUrl', SUPABASE_URL);
-  STATE.setConfig('supabaseKey', SUPABASE_KEY);
-  const existingTpls = await db.all('templates');
-  if (!existingTpls.length) for (const t of DEFAULT_TEMPLATES) await db.put('templates', t);
+async function bootUI(){
+  renderEvolFields('guardia');await renderPatientList();await refreshEvolPatientSelect();
+  document.getElementById('evol-date').value=nowLocal();
+  const draft=await db.get('drafts','evol');
+  if(draft){const hc=draft.fields&&Object.values(draft.fields).some(v=>v&&v.trim());if(hc||(draft.tags&&draft.tags.length))await loadDraft();else await db.del('drafts','evol');}
+  const lastTab=localStorage.getItem('psiqrex_lasttab');
+  if(lastTab&&['pacientes','evolucion','busqueda','config'].includes(lastTab))switchTab(lastTab);
 }
-
-async function bootUI() {
-  renderEvolFields('guardia');
-  await renderPatientList();
-  await refreshEvolPatientSelect();
-  document.getElementById('evol-date').value = nowLocal();
-  const draft = await db.get('drafts', 'evol');
-  if (draft) {
-    const hasContent = draft.fields && Object.values(draft.fields).some(v => v && v.trim());
-    if (hasContent || (draft.tags && draft.tags.length)) await loadDraft();
-    else await db.del('drafts', 'evol');
-  }
-  const lastTab = localStorage.getItem('psiqrex_lasttab');
-  if (lastTab && ['pacientes','evolucion','busqueda','config'].includes(lastTab)) switchTab(lastTab);
+function bootDismissLoader(){
+  const l=document.getElementById('loading');l.classList.add('out');l.addEventListener('animationend',()=>l.remove(),{once:true});
 }
-
-function bootDismissLoader() {
-  const loader = document.getElementById('loading');
-  loader.classList.add('out');
-  loader.addEventListener('animationend', () => loader.remove(), { once: true });
-}
-
-async function bootAuth() {
-  try {
-    const ok = SB.init(STATE.config.supabaseUrl, STATE.config.supabaseKey);
-    if (!ok) { showAuthScreen(); return; }
-    SB.client.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
-        SB.user = null;
-        document.getElementById('btn-logout').classList.add('hidden');
-        setSyncStatus('', '');
-        toast('Sesión expirada — ingresá nuevamente', 'error', 5000);
-        setTimeout(() => showAuthScreen(), 1500);
+async function bootAuth(){
+  try{
+    const ok=SB.init(STATE.config.supabaseUrl,STATE.config.supabaseKey);
+    if(!ok){showAuthScreen();return;}
+    SB.client.auth.onAuthStateChange((event,session)=>{
+      if(event==='SIGNED_OUT'||(event==='TOKEN_REFRESHED'&&!session)){
+        SB.user=null;document.getElementById('btn-logout').classList.add('hidden');
+        setSyncStatus('','');toast('Sesión expirada — ingresá nuevamente','error',5000);
+        setTimeout(()=>showAuthScreen(),1500);
       }
-      if (event === 'SIGNED_IN' && session) { SB.user = session.user; }
+      if(event==='SIGNED_IN'&&session)SB.user=session.user;
     });
-    await new Promise(r => setTimeout(r, 400));
-    const hash = window.location.hash;
-    if (hash && hash.includes('access_token')) {
-      await new Promise(r => setTimeout(r, 600));
-      history.replaceState(null, '', window.location.pathname);
-    }
-    const session = await SB.getSession();
-    if (session) {
-      SB.user = session.user;
-      document.getElementById('btn-logout').classList.remove('hidden');
-      setSyncStatus('ok', 'Supabase');
-      await SyncQueue.flush();
-      await fullSync();
-      const hp = new URLSearchParams(hash.replace('#',''));
-      if (hp.get('type') === 'invite') showSetPasswordModal();
-      else if (hash && hash.includes('access_token')) toast('Bienvenido — sesión iniciada', 'ok', 3000);
-    } else {
-      showAuthScreen();
-    }
-  } catch(err) {
-    console.error('[Boot] Auth error:', err);
-    toast('Error de conexión — reintentá más tarde', 'error', 4000);
-    showAuthScreen();
-  }
+    await new Promise(r=>setTimeout(r,400));
+    const hash=window.location.hash;
+    if(hash&&hash.includes('access_token')){await new Promise(r=>setTimeout(r,600));history.replaceState(null,'',window.location.pathname);}
+    const session=await SB.getSession();
+    if(session){
+      SB.user=session.user;document.getElementById('btn-logout').classList.remove('hidden');
+      setSyncStatus('ok','Supabase');await SyncQueue.flush();await fullSync();
+      const hp=new URLSearchParams(hash.replace('#',''));
+      if(hp.get('type')==='invite')showSetPasswordModal();
+      else if(hash&&hash.includes('access_token'))toast('Bienvenido — sesión iniciada','ok',3000);
+    }else{showAuthScreen();}
+  }catch(err){console.error('[Boot]',err);toast('Error de conexión — reintentá más tarde','error',4000);showAuthScreen();}
 }
-
-async function boot() {
-  await bootTheme();
-  await bootDB();
-  await bootUI();
-  bootDismissLoader();
-  await bootAuth();
-  if (!localStorage.getItem('psiqrex_tutdone')) setTimeout(startTutorial, 800);
-  window.addEventListener('online', async () => {
-    updateSyncIndicator();
-    if (SB.client && SB.user) await SyncQueue.flush();
-  });
+async function boot(){
+  await bootTheme();await bootDB();await bootUI();bootDismissLoader();await bootAuth();
+  if(!localStorage.getItem('psiqrex_tutdone'))setTimeout(startTutorial,800);
+  window.addEventListener('online',async()=>{updateSyncIndicator();if(SB.client&&SB.user)await SyncQueue.flush();});
 }
 boot().catch(err=>{document.getElementById('loading').innerHTML='<div style="text-align:center;padding:24px"><div style="font-size:28px;margin-bottom:12px">\u26a0\ufe0f</div><div style="color:var(--red);font-size:13px">Error al inicializar:<br>'+String(err.message)+'</div></div>';});
 
