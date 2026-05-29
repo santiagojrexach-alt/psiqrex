@@ -29,6 +29,9 @@
   --blue:#60a5fa;--blue-bg:rgba(96,165,250,0.10);
   --sans:'Syne',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
   --nav-h:52px;--r:12px;--rs:7px;
+
+  /* Spacing scale */
+  --sp-xs:4px;--sp-sm:8px;--sp-md:14px;--sp-lg:20px;--sp-xl:28px;
 }
 :root.light{
   --bg:#dfe0e8;--s1:#f2f2f7;--s2:#e8e8ef;--s3:#dcdce5;--s4:#c8c8d4;
@@ -903,7 +906,9 @@ const SyncQueue = {
     // Deduplicate: replace existing op for same id
     const filtered = queue.filter(q => !(q.entity === op.entity && q.data?.id === op.data?.id));
     filtered.push({ ...op, ts: Date.now() });
-    await db.put('config', { key: 'sync_queue', value: JSON.stringify(filtered) });
+    // Cap queue at 500 operations to prevent unbounded growth
+    const capped = filtered.length > 500 ? filtered.slice(-500) : filtered;
+    await db.put('config', { key: 'sync_queue', value: JSON.stringify(capped) });
   },
 
   async get() {
@@ -975,22 +980,25 @@ const STATE=(() => {
 })();
 
 /* DB */
+const DB_VERSION = 2;
+
 function initDB(){
   return new Promise((res,rej)=>{
-    const req=indexedDB.open('psiqrex_v2',1);
+    const req=indexedDB.open('psiqrex_v2', DB_VERSION);
     req.onupgradeneeded=e=>{
       const db=e.target.result;
-      if(!db.objectStoreNames.contains('pacientes')) db.createObjectStore('pacientes',{keyPath:'id'});
-      if(!db.objectStoreNames.contains('evoluciones')){
-        const es=db.createObjectStore('evoluciones',{keyPath:'id'});
-        es.createIndex('paciente_id','paciente_id');es.createIndex('fecha','fecha_evolucion');
+      const oldVer=e.oldVersion;
+      if(oldVer < 1){
+        if(!db.objectStoreNames.contains('pacientes'))db.createObjectStore('pacientes',{keyPath:'id'}).createIndex('updated_at','updated_at');
+        if(!db.objectStoreNames.contains('evoluciones')){const s=db.createObjectStore('evoluciones',{keyPath:'id'});s.createIndex('paciente_id','paciente_id');s.createIndex('updated_at','updated_at');}
+        if(!db.objectStoreNames.contains('templates'))db.createObjectStore('templates',{keyPath:'id'});
+        if(!db.objectStoreNames.contains('drafts'))db.createObjectStore('drafts',{keyPath:'key'});
+        if(!db.objectStoreNames.contains('config'))db.createObjectStore('config',{keyPath:'key'});
       }
-      if(!db.objectStoreNames.contains('config')) db.createObjectStore('config',{keyPath:'key'});
-      if(!db.objectStoreNames.contains('drafts')) db.createObjectStore('drafts',{keyPath:'key'});
-      if(!db.objectStoreNames.contains('templates')) db.createObjectStore('templates',{keyPath:'id'});
+      // v2+: add migration blocks here as needed
     };
     req.onsuccess=e=>res(e.target.result);
-    req.onerror=e=>rej(e.target.error);
+    req.onerror=()=>rej(req.error);
   });
 }
 const db={
@@ -1317,11 +1325,13 @@ async function saveQuickNotes(pid, value) {
   p.updated_at = nowISO();
   await db.put('pacientes', p);
   // Sync to Supabase
-  if (SB.client && SB.user) await SB.upsertPaciente(p);
-  else await SyncQueue.push({ type:'upsert', entity:'paciente', data:p });
+  try {
+    if (SB.client && SB.user) await SB.upsertPaciente(p);
+    else await SyncQueue.push({ type:'upsert', entity:'paciente', data:p });
+  } catch(e) { await SyncQueue.push({ type:'upsert', entity:'paciente', data:p }); }
 }
 
-document.getElementById('btn-save-qnotes').addEventListener('click', async () => {
+document.getElementById('btn-save-qnotes')?.addEventListener('click', async () => {
   const ta  = document.getElementById('detail-qnotes');
   const pid = ta._pid;
   if (!pid) return;
@@ -1330,7 +1340,7 @@ document.getElementById('btn-save-qnotes').addEventListener('click', async () =>
 });
 
 // Auto-save quick notes on blur
-document.getElementById('detail-qnotes').addEventListener('blur', async () => {
+document.getElementById('detail-qnotes')?.addEventListener('blur', async () => {
   const ta  = document.getElementById('detail-qnotes');
   const pid = ta._pid;
   if (!pid) return;
@@ -1371,7 +1381,7 @@ function buildEvolCard(e){
   ).join('');
   return `<div class="card evol-card"><div class="card-section"><div class="evol-head"><span class="evol-pill ${pillCls}">${tipoPretty}</span><span class="evol-datetime">${formatDate(e.fecha_evolucion)}</span></div><div class="evol-body">${content}</div>${tags?'<div class="evol-tags-row">'+tags+'</div>':''}<div class="evol-actions"><button class="evol-act-btn dup" data-action="dup" data-id="${e.id}">Duplicar</button><button class="evol-act-btn" data-action="edit" data-id="${e.id}">Editar</button><button class="evol-act-btn del" data-action="delete" data-id="${e.id}">Eliminar</button></div></div></div>`;
 }
-document.getElementById('tl-sort-btn').addEventListener('click', () => {
+document.getElementById('tl-sort-btn')?.addEventListener('click', () => {
   _tlSortAsc = !_tlSortAsc;
   document.getElementById('tl-sort-btn').innerHTML = _tlSortAsc
     ? '↑ Más antiguas'
@@ -1391,7 +1401,7 @@ document.getElementById('filter-chips').addEventListener('click',async e=>{
     renderTimeline(STATE.pid, STATE.evolFilter)
   );
 });
-document.getElementById('date-filter-clear').addEventListener('click', () => {
+document.getElementById('date-filter-clear')?.addEventListener('click', () => {
   document.getElementById('date-from').value = '';
   document.getElementById('date-to').value   = '';
   _tlSortAsc = false;
@@ -1442,8 +1452,10 @@ document.getElementById('btn-save-patient').addEventListener('click',async()=>{
   if(STATE.editPid){const ex=await db.get('pacientes',STATE.editPid);patient={...ex,name,datos,updated_at:now};}
   else{patient={id:uuid(),name,datos,created_at:now,updated_at:now};}
   await db.put('pacientes',patient);
-  if(SB.client && SB.user) await SB.upsertPaciente(patient);
-  else await SyncQueue.push({type:'upsert',entity:'paciente',data:patient});
+  try {
+    if(SB.client && SB.user) await SB.upsertPaciente(patient);
+    else await SyncQueue.push({type:'upsert',entity:'paciente',data:patient});
+  } catch(e) { await SyncQueue.push({type:'upsert',entity:'paciente',data:patient}); }
   closeModal('modal-patient');
   toast(STATE.editPid?'Paciente actualizado':'Paciente creado');
   if(STATE.pid===patient.id)await openPatientDetail(patient.id);else await renderPatientList(document.getElementById('search-patients').value);
@@ -1535,11 +1547,15 @@ async function saveEvolucion(){
   const isEdit=!!STATE.editEid;const existing=isEdit?await db.get('evoluciones',STATE.editEid):null;
   const evol={id:isEdit?STATE.editEid:uuid(),paciente_id:patientId,tipo:STATE.evol.tipo,contenido,tags:[...STATE.evol.tags],fecha_evolucion:new Date(dateRaw).toISOString(),created_at:existing?.created_at||nowISO(),updated_at:nowISO()};
   await db.put('evoluciones',evol);
-  if(SB.client && SB.user) await SB.upsertEvolucion(evol);
-  else await SyncQueue.push({type:'upsert',entity:'evolucion',data:evol});
+  try {
+    if(SB.client && SB.user) await SB.upsertEvolucion(evol);
+    else await SyncQueue.push({type:'upsert',entity:'evolucion',data:evol});
+  } catch(e) { await SyncQueue.push({type:'upsert',entity:'evolucion',data:evol}); }
   const p=await db.get('pacientes',patientId);
   if(p){p.updated_at=nowISO();await db.put('pacientes',p);
-    if(SB.client && SB.user) await SB.upsertPaciente(p);
+    try {
+      if(SB.client && SB.user) await SB.upsertPaciente(p);
+    } catch(e) { await SyncQueue.push({type:'upsert',entity:'paciente',data:p}); }
   }
   await db.del('drafts','evol');toast(isEdit?'Evolución actualizada':'Evolución guardada');
   STATE.resetEvol();resetEvolForm();hideDraftNote();await refreshSidebar();
@@ -1767,9 +1783,13 @@ async function renderConfigStats(){
   document.getElementById('cfg-ev-count').textContent=es.length+' evoluci\u00f3n'+(es.length!==1?'es':'');
   const syncStatus = document.getElementById('cfg-sync-status');
   if (syncStatus) {
-    syncStatus.textContent = SB.user
-      ? 'Conectado como ' + (SB.user.email || SB.user.id)
-      : 'No conectado';
+    if (SB.user) {
+      const lastSync = await db.get('config', 'last_sync_at');
+      const lastStr = lastSync ? ' · última sync ' + relTime(lastSync.value) : '';
+      syncStatus.textContent = 'Conectado como ' + (SB.user.email || SB.user.id) + lastStr;
+    } else {
+      syncStatus.textContent = 'No conectado';
+    }
   }
 }
 document.addEventListener('click', async e => {
@@ -2396,6 +2416,7 @@ async function fullSync() {
       }
     }
 
+    await db.put('config', { key: 'last_sync_at', value: new Date().toISOString() });
     hideSyncBar();
     setSyncStatus('ok', 'Supabase');
     toast('Sincronización completa', 'ok', 2500);
@@ -2474,131 +2495,98 @@ document.addEventListener('keydown', e => {
 });
 
 /* DEMO DATA */
-async function seedDemoData(){
-  const now=new Date(),ago=d=>new Date(now-d*86400000).toISOString();
-  const p1={id:uuid(),name:'Juan Rodr\u00edguez',datos:{sex:'Masculino',age:'34',situation:'Internado',ward:'Sala 3',alerts:'Riesgo autol\u00edtico',notes:'Derivado de guardia el 15/05. Internaci\u00f3n involuntaria.'},created_at:ago(10),updated_at:ago(1)};
-  const p2={id:uuid(),name:'Mar\u00eda Gonz\u00e1lez',datos:{sex:'Femenino',age:'28',situation:'Ambulatorio',ward:'',alerts:'',notes:'Buena adherencia al tratamiento. Trabaja medio tiempo.'},created_at:ago(30),updated_at:ago(3)};
-  const p3={id:uuid(),name:'Carlos M\u00e9ndez',datos:{sex:'Masculino',age:'52',situation:'Guardia',ward:'Guardia',alerts:'Desvinculaci\u00f3n familiar',notes:''},created_at:ago(1),updated_at:ago(0)};
-  await db.put('pacientes',p1);await db.put('pacientes',p2);await db.put('pacientes',p3);
-  const evols=[
-    {id:uuid(),paciente_id:p1.id,tipo:'internacion',contenido:{evolucion:'Refiere dormir algo mejor. Persiste la ideaci\u00f3n suicida sin plan estructurado.',psicosemiologia:'Paciente vigil, orientado. Afecto aplanado, hipot\u00edmico. Discurso enlentecido, coherente. Ideaci\u00f3n suicida pasiva sin plan. Niega alucinaciones. Juicio deteriorado. Cr\u00edtica parcial.',diagnostico:'F20.0 Esquizofrenia paranoide',plan:'Continuar risperidona 2mg/d\u00eda. Clonazepam 2mg/noche. Psicoterapia de crisis martes y viernes.',medicacion:'Risperidona 2mg/d\u00eda \u00b7 Clonazepam 2mg/noche'},tags:[{valor:'F20.0',tipo:'diag'},{valor:'Risperidona 2mg',tipo:'med'},{valor:'Ideaci\u00f3n suicida',tipo:'alert'}],fecha_evolucion:ago(1),created_at:ago(1)},
-    {id:uuid(),paciente_id:p1.id,tipo:'guardia',contenido:{motivo:'Agitaci\u00f3n psicomotriz. Enfermer\u00eda lo trae por golpear la pared de su habitaci\u00f3n.',psicosemiologia:'Exaltado, discurso acelerado, contenido delirante de perjuicio. No responde a reorientaci\u00f3n verbal.',diagnostico:'Episodio agudo en contexto de esquizofrenia paranoide.',plan:'Haloperidol 5mg IM stat. Contenci\u00f3n verbal y ambiental. Reevaluar en 2h.'},tags:[{valor:'F20.0',tipo:'diag'},{valor:'Haloperidol 5mg IM',tipo:'med'},{valor:'Agitaci\u00f3n',tipo:'alert'}],fecha_evolucion:ago(3),created_at:ago(3)},
-    {id:uuid(),paciente_id:p2.id,tipo:'consultorios',contenido:{evolucion:'Refiere \u00e1nimo estable. Retom\u00f3 actividad laboral parcialmente. Duerme bien.',psicosemiologia:'Eut\u00edmica. Pensamiento organizado. Sin ideaci\u00f3n suicida activa. Juicio conservado. Cr\u00edtica presente.',diagnostico:'F33.0 Trastorno depresivo recurrente, episodio leve actual',plan:'Continuar esquema. Pr\u00f3xima cita en 3 semanas.',medicacion:'Sertralina 100mg/d\u00eda',proximaCita:'15/06/2025 \u2014 Consultorio externo'},tags:[{valor:'F33.0',tipo:'diag'},{valor:'Sertralina 100mg',tipo:'med'}],fecha_evolucion:ago(3),created_at:ago(3)},
-    {id:uuid(),paciente_id:p3.id,tipo:'guardia',contenido:{motivo:'Crisis de angustia en contexto de conflicto familiar. Acompa\u00f1ado por esposa.',psicosemiologia:'Angustiado, taquic\u00e1rdico. Pensamiento rumiativo. Sin ideaci\u00f3n autol\u00edtica. Sin alteraciones sensoperceptivas.',diagnostico:'F41.0 Trastorno de p\u00e1nico',plan:'Lorazepam 1mg VO. Psicoeducaci\u00f3n. Derivar a consultorio externo de salud mental.'},tags:[{valor:'F41.0',tipo:'diag'},{valor:'Lorazepam 1mg',tipo:'med'}],fecha_evolucion:ago(0),created_at:ago(0)},
-  ];
-  for(const e of evols)await db.put('evoluciones',e);
-}
 
 /* BOOT */
-async function boot(){
-  // 1. Theme
-  const savedTheme = localStorage.getItem('psiqrex_theme');
-  applyTheme(savedTheme === 'light');
+/* ── BOOT PHASES ──────────────────────────────────────────
+   Each phase is self-contained and named by responsibility.
+   ──────────────────────────────────────────────────────── */
 
-  // 2. IndexedDB
+async function bootTheme() {
+  const saved = localStorage.getItem('psiqrex_theme');
+  applyTheme(saved === 'light');
+}
+
+async function bootDB() {
   STATE.db = await initDB();
-
-  // 3. Always use hardcoded Supabase credentials
   STATE.setConfig('supabaseUrl', SUPABASE_URL);
   STATE.setConfig('supabaseKey', SUPABASE_KEY);
-
-  // 4. Seed templates if empty
   const existingTpls = await db.all('templates');
   if (!existingTpls.length) for (const t of DEFAULT_TEMPLATES) await db.put('templates', t);
+}
 
-  // 5. No demo data — start empty, sync fills from Supabase
-
-  // 6. Init UI
+async function bootUI() {
   renderEvolFields('guardia');
   await renderPatientList();
   await refreshEvolPatientSelect();
   document.getElementById('evol-date').value = nowLocal();
-  // Restore last active tab
-  const lastTab = localStorage.getItem('psiqrex_lasttab');
-  if (lastTab && ['pacientes','evolucion','busqueda','config'].includes(lastTab)) {
-    switchTab(lastTab);
-  }
-
-  // 7. Restore draft
-  const draft = await db.get('drafts','evol');
+  const draft = await db.get('drafts', 'evol');
   if (draft) {
-    // Only restore if draft has actual field content (not just metadata)
     const hasContent = draft.fields && Object.values(draft.fields).some(v => v && v.trim());
     const hasTags    = draft.tags && draft.tags.length > 0;
     if (hasContent || hasTags) await loadDraft();
-    else await db.del('drafts', 'evol'); // clean up empty draft
+    else await db.del('drafts', 'evol');
   }
+  const lastTab = localStorage.getItem('psiqrex_lasttab');
+  if (lastTab && ['pacientes','evolucion','busqueda','config'].includes(lastTab)) switchTab(lastTab);
+}
 
-  // 8. Dismiss loader
+function bootDismissLoader() {
   const loader = document.getElementById('loading');
   loader.classList.add('out');
-  loader.addEventListener('animationend', () => loader.remove(), {once:true});
+  loader.addEventListener('animationend', () => loader.remove(), { once: true });
+}
 
-  // 9. Supabase auth check
-  if (STATE.config.supabaseUrl && STATE.config.supabaseKey) {
-    try {
-      const ok = SB.init(STATE.config.supabaseUrl, STATE.config.supabaseKey);
-      if (ok) {
-        // Listen for session expiry
-        SB.client.auth.onAuthStateChange((event, session) => {
-          if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
-            SB.user = null;
-            document.getElementById('btn-logout').classList.add('hidden');
-            setSyncStatus('', '');
-            toast('Sesión expirada — ingresá nuevamente', 'error', 5000);
-            setTimeout(() => showAuthScreen(), 1500);
-          }
-          if (event === 'SIGNED_IN' && session) {
-            SB.user = session.user;
-          }
-        });
-        await new Promise(r => setTimeout(r, 400));
+async function bootAuth() {
+  try {
+    const ok = SB.init(STATE.config.supabaseUrl, STATE.config.supabaseKey);
+    if (!ok) { showAuthScreen(); return; }
 
-        // Handle magic link / invite token in URL hash
-        const hash = window.location.hash;
-        if (hash && hash.includes('access_token')) {
-          // Supabase SDK picks up the token automatically from the hash
-          // Wait a bit more for it to process
-          await new Promise(r => setTimeout(r, 600));
-          // Clean the URL
-          history.replaceState(null, '', window.location.pathname);
-        }
-
-        const session = await SB.getSession();
-        if (session) {
-          SB.user = session.user;
-          document.getElementById('btn-logout').classList.remove('hidden');
-          setSyncStatus('ok', 'Supabase');
-          await SyncQueue.flush();
-          await fullSync();
-          // Check if this is a first-time invite (needs password update)
-          const hashParams = new URLSearchParams(hash.replace('#',''));
-          if (hashParams.get('type') === 'invite') {
-            // Show password update prompt
-            showSetPasswordModal();
-          } else if (hash && hash.includes('access_token')) {
-            toast('Bienvenido a PsiqRex — sesión iniciada', 'ok', 3000);
-          }
-        } else {
-          showAuthScreen();
-        }
-      } else {
-        updateSyncIndicator();
+    SB.client.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
+        SB.user = null;
+        document.getElementById('btn-logout').classList.add('hidden');
+        setSyncStatus('', '');
+        toast('Sesión expirada — ingresá nuevamente', 'error', 5000);
+        setTimeout(() => showAuthScreen(), 1500);
       }
-    } catch(err) {
-      console.error('[Boot] Supabase init error:', err);
-      toast('Supabase no disponible, modo local', 'info', 3000);
-      updateSyncIndicator();
+      if (event === 'SIGNED_IN' && session) { SB.user = session.user; }
+    });
+
+    await new Promise(r => setTimeout(r, 400));
+
+    const hash = window.location.hash;
+    if (hash && hash.includes('access_token')) {
+      await new Promise(r => setTimeout(r, 600));
+      history.replaceState(null, '', window.location.pathname);
     }
-  } else {
-    // No Supabase configured yet → show login where user can configure + login
+
+    const session = await SB.getSession();
+    if (session) {
+      SB.user = session.user;
+      document.getElementById('btn-logout').classList.remove('hidden');
+      setSyncStatus('ok', 'Supabase');
+      await SyncQueue.flush();
+      await fullSync();
+      const hashParams = new URLSearchParams(hash.replace('#', ''));
+      if (hashParams.get('type') === 'invite') showSetPasswordModal();
+      else if (hash && hash.includes('access_token')) toast('Bienvenido — sesión iniciada', 'ok', 3000);
+    } else {
+      showAuthScreen();
+    }
+  } catch(err) {
+    console.error('[Boot] Auth error:', err);
+    toast('Error de conexión — reintentá más tarde', 'error', 4000);
     showAuthScreen();
   }
+}
 
-  // 10. Tutorial on first visit
+async function boot() {
+  await bootTheme();
+  await bootDB();
+  await bootUI();
+  bootDismissLoader();
+  await bootAuth();
   if (!localStorage.getItem('psiqrex_tutdone')) setTimeout(startTutorial, 800);
-
-  // 11. Flush sync queue when coming back online
   window.addEventListener('online', async () => {
     updateSyncIndicator();
     if (SB.client && SB.user) await SyncQueue.flush();
