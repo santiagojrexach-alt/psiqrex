@@ -30,7 +30,6 @@
   --sans:'Syne',system-ui,sans-serif;--mono:'JetBrains Mono',monospace;
   --nav-h:52px;--r:12px;--rs:7px;
 
-  /* Spacing scale */
   --sp-xs:4px;--sp-sm:8px;--sp-md:14px;--sp-lg:20px;--sp-xl:28px;
 }
 :root.light{
@@ -138,6 +137,11 @@ textarea{resize:vertical;line-height:1.65}select{cursor:pointer}select option{ba
 .error-banner{background:var(--red-bg);border:1px solid rgba(248,113,113,0.25);border-radius:var(--rs);padding:12px 16px;font-size:13px;color:var(--red);display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .error-banner svg{flex-shrink:0}
 .pt-evol-count{font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:3px;display:flex;align-items:center;gap:4px}
+.agenda-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--s2);border-radius:var(--rs);border:1px solid var(--b1);cursor:pointer;transition:background .15s}
+.agenda-item:hover{background:var(--s3)}
+.agenda-date{font-family:var(--mono);font-size:11px;color:var(--accent2);min-width:90px;flex-shrink:0}
+.agenda-name{font-size:13px;font-weight:500;flex:1}
+.agenda-nota{font-size:11px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
 .pt-evol-count span{background:var(--s3);border:1px solid var(--b2);border-radius:4px;padding:1px 6px;color:var(--t2);font-weight:500}
 .pt-avatar{width:38px;height:38px;border-radius:10px;background:var(--adim);border:1px solid rgba(124,106,247,0.2);display:grid;place-items:center;font-size:14px;font-weight:700;color:var(--accent2);flex-shrink:0;font-family:var(--mono)}
 .pt-info{flex:1;min-width:0}
@@ -400,6 +404,10 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
         <div><div class="page-title">Pacientes</div><div class="page-sub" id="pt-count-label"></div></div>
         <button class="btn btn-primary" id="btn-new-patient">+ Nuevo paciente</button>
       </div>
+      <div id="agenda-section" style="display:none;margin-bottom:16px">
+        <div class="section-label" style="margin-bottom:8px">Próximas citas</div>
+        <div id="agenda-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
       <input type="text" style="display:none" autocomplete="username">
       <input type="password" style="display:none" autocomplete="current-password">
       <div class="search-row">
@@ -431,10 +439,10 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
           <div class="detail-header">
             <div><div class="detail-name" id="detail-name"></div><div id="detail-badges" style="display:flex;flex-wrap:wrap;gap:6px"></div></div>
             <div class="detail-actions">
+              <button class="btn btn-primary btn-sm" id="btn-new-evol-from-detail">+ Nueva evolución</button>
               <button class="btn btn-ghost btn-sm" id="btn-edit-patient">Editar</button>
-              <button class="btn btn-danger btn-sm" id="btn-delete-patient">Eliminar</button>
               <button class="btn btn-ghost btn-sm" id="btn-pdf"><span id="pdf-label">&#x2193; PDF</span></button>
-              <button class="btn btn-primary btn-sm" id="btn-new-evol-from-detail">+ Evoluci&#xF3;n</button>
+              <button class="btn btn-danger btn-sm" id="btn-delete-patient">Eliminar</button>
             </div>
           </div>
         </div>
@@ -456,6 +464,14 @@ kbd{font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:4px;bac
           <div style="display:flex;justify-content:flex-end;margin-top:6px">
             <button class="btn btn-ghost btn-sm" id="btn-save-qnotes">Guardar nota</button>
           </div>
+        </div>
+      </div>
+      <div class="card" id="detail-summary-card" style="margin-bottom:14px;display:none">
+        <div class="card-section" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><div class="section-label" style="margin-bottom:3px">Medicación</div><div id="summary-med" style="font-size:12px;color:var(--t1);line-height:1.5">—</div></div>
+          <div><div class="section-label" style="margin-bottom:3px">Próxima cita</div><div id="summary-cita" style="font-size:12px;color:var(--t1);line-height:1.5">—</div></div>
+          <div><div class="section-label" style="margin-bottom:3px">Diagnóstico</div><div id="summary-dx" style="font-size:12px;color:var(--t1);line-height:1.5">—</div></div>
+          <div><div class="section-label" style="margin-bottom:3px">Última evolución</div><div id="summary-last" style="font-size:12px;color:var(--t1);line-height:1.5">—</div></div>
         </div>
       </div>
       <div class="date-filter-row" id="date-filter-row">
@@ -906,7 +922,6 @@ const SyncQueue = {
     // Deduplicate: replace existing op for same id
     const filtered = queue.filter(q => !(q.entity === op.entity && q.data?.id === op.data?.id));
     filtered.push({ ...op, ts: Date.now() });
-    // Cap queue at 500 operations to prevent unbounded growth
     const capped = filtered.length > 500 ? filtered.slice(-500) : filtered;
     await db.put('config', { key: 'sync_queue', value: JSON.stringify(capped) });
   },
@@ -1175,6 +1190,37 @@ function showPatientListSkeleton() {
   ).join('');
 }
 
+async function renderAgenda() {
+  const section=document.getElementById('agenda-section');
+  const list=document.getElementById('agenda-list');
+  if(!section||!list)return;
+  const pts=await db.all('pacientes');
+  const evols=await db.all('evoluciones');
+  const ptMap=Object.fromEntries(pts.map(p=>[p.id,p]));
+  evols.sort((a,b)=>new Date(b.fecha_evolucion)-new Date(a.fecha_evolucion));
+  const seen=new Set(),items=[];
+  for(const ev of evols){
+    if(seen.has(ev.paciente_id))continue;
+    seen.add(ev.paciente_id);
+    const cita=(ev.contenido?.proximaCita||'').trim();
+    if(!cita)continue;
+    const pt=ptMap[ev.paciente_id];
+    if(pt)items.push({pt,cita});
+  }
+  if(!items.length){section.style.display='none';return;}
+  section.style.display='';
+  list.innerHTML=items.slice(0,5).map(({pt,cita})=>
+    '<div class="agenda-item" data-pid="'+pt.id+'">'+
+    '<span class="agenda-date">'+esc(cita.slice(0,14))+'</span>'+
+    '<span class="agenda-name">'+esc(pt.name)+'</span>'+
+    '<span class="agenda-nota">'+esc(cita.length>14?cita.slice(14).trim():'')+'</span>'+
+    '</div>'
+  ).join('');
+  list.querySelectorAll('.agenda-item').forEach(el=>
+    el.addEventListener('click',()=>openPatientDetail(el.dataset.pid))
+  );
+}
+
 async function renderPatientList(filter='') {
   showPatientListSkeleton();
   let all = await db.all('pacientes');
@@ -1201,6 +1247,7 @@ async function renderPatientList(filter='') {
   });
 
   document.getElementById('pt-count-label').textContent =
+  await renderAgenda();
     `${all.length} paciente${all.length!==1?'s':''} · ${allEvols.length} evolución${allEvols.length!==1?'es':''}`;
 
   const list = document.getElementById('patient-list');
@@ -1310,6 +1357,20 @@ async function renderMedSummary(patientId) {
   srcEl.textContent = `\u00daltima actualizaci\u00f3n: ${tipo} del ${formatDateShort(latest.fecha_evolucion)}`;
 }
 
+async function refreshSummaryCard(pid) {
+  const card = document.getElementById('detail-summary-card');
+  if (!card) return;
+  const evols = await db.byIndex('evoluciones', 'paciente_id', pid);
+  if (!evols.length) { card.style.display='none'; return; }
+  evols.sort((a,b)=>new Date(b.fecha_evolucion)-new Date(a.fecha_evolucion));
+  const con = evols[0].contenido || {};
+  card.style.display='';
+  document.getElementById('summary-med').textContent  = con.medicacion?.trim()  || '—';
+  document.getElementById('summary-cita').textContent = con.proximaCita?.trim() || '—';
+  document.getElementById('summary-dx').textContent   = con.diagnostico?.trim() || '—';
+  document.getElementById('summary-last').textContent = formatDate(evols[0].fecha_evolucion);
+}
+
 async function loadQuickNotes(patientId) {
   const p   = await db.get('pacientes', patientId);
   const ta  = document.getElementById('detail-qnotes');
@@ -1325,10 +1386,8 @@ async function saveQuickNotes(pid, value) {
   p.updated_at = nowISO();
   await db.put('pacientes', p);
   // Sync to Supabase
-  try {
-    if (SB.client && SB.user) await SB.upsertPaciente(p);
-    else await SyncQueue.push({ type:'upsert', entity:'paciente', data:p });
-  } catch(e) { await SyncQueue.push({ type:'upsert', entity:'paciente', data:p }); }
+  if (SB.client && SB.user) await SB.upsertPaciente(p);
+  else await SyncQueue.push({ type:'upsert', entity:'paciente', data:p });
 }
 
 document.getElementById('btn-save-qnotes')?.addEventListener('click', async () => {
@@ -1368,6 +1427,7 @@ async function renderTimeline(pid, filter) {
   if(!filtered.length){tl.innerHTML='<div class="empty-state"><div class="empty-icon">&#x1F4CB;</div><h3>'+(filter!=='todas'?'Sin evoluciones de este tipo':'Sin evoluciones a\u00fan')+'</h3><p>Cre\u00e1 la primera con el bot\u00f3n de arriba.</p></div>';return;}
   tl.innerHTML=filtered.map(e=>buildEvolCard(e)).join('');
   tl.querySelectorAll('.evol-act-btn').forEach(btn=>btn.addEventListener('click',()=>{const{action,id}=btn.dataset;if(action==='edit')editEvol(id);if(action==='delete')deleteEvol(id);if(action==='dup')dupEvol(id);}));
+  await refreshSummaryCard(pid);
   tl.querySelectorAll('.tag-clickable').forEach(t=>
     t.addEventListener('click', e => { e.stopPropagation(); searchFromTag(t.dataset.val, t.dataset.tipo); })
   );
@@ -1553,9 +1613,7 @@ async function saveEvolucion(){
   } catch(e) { await SyncQueue.push({type:'upsert',entity:'evolucion',data:evol}); }
   const p=await db.get('pacientes',patientId);
   if(p){p.updated_at=nowISO();await db.put('pacientes',p);
-    try {
-      if(SB.client && SB.user) await SB.upsertPaciente(p);
-    } catch(e) { await SyncQueue.push({type:'upsert',entity:'paciente',data:p}); }
+    if(SB.client && SB.user) await SB.upsertPaciente(p);
   }
   await db.del('drafts','evol');toast(isEdit?'Evolución actualizada':'Evolución guardada');
   STATE.resetEvol();resetEvolForm();hideDraftNote();await refreshSidebar();
@@ -1783,13 +1841,9 @@ async function renderConfigStats(){
   document.getElementById('cfg-ev-count').textContent=es.length+' evoluci\u00f3n'+(es.length!==1?'es':'');
   const syncStatus = document.getElementById('cfg-sync-status');
   if (syncStatus) {
-    if (SB.user) {
-      const lastSync = await db.get('config', 'last_sync_at');
-      const lastStr = lastSync ? ' · última sync ' + relTime(lastSync.value) : '';
-      syncStatus.textContent = 'Conectado como ' + (SB.user.email || SB.user.id) + lastStr;
-    } else {
-      syncStatus.textContent = 'No conectado';
-    }
+    syncStatus.textContent = SB.user
+      ? 'Conectado como ' + (SB.user.email || SB.user.id)
+      : 'No conectado';
   }
 }
 document.addEventListener('click', async e => {
@@ -2497,13 +2551,8 @@ document.addEventListener('keydown', e => {
 /* DEMO DATA */
 
 /* BOOT */
-/* ── BOOT PHASES ──────────────────────────────────────────
-   Each phase is self-contained and named by responsibility.
-   ──────────────────────────────────────────────────────── */
-
 async function bootTheme() {
-  const saved = localStorage.getItem('psiqrex_theme');
-  applyTheme(saved === 'light');
+  applyTheme(localStorage.getItem('psiqrex_theme') === 'light');
 }
 
 async function bootDB() {
@@ -2522,8 +2571,7 @@ async function bootUI() {
   const draft = await db.get('drafts', 'evol');
   if (draft) {
     const hasContent = draft.fields && Object.values(draft.fields).some(v => v && v.trim());
-    const hasTags    = draft.tags && draft.tags.length > 0;
-    if (hasContent || hasTags) await loadDraft();
+    if (hasContent || (draft.tags && draft.tags.length)) await loadDraft();
     else await db.del('drafts', 'evol');
   }
   const lastTab = localStorage.getItem('psiqrex_lasttab');
@@ -2540,7 +2588,6 @@ async function bootAuth() {
   try {
     const ok = SB.init(STATE.config.supabaseUrl, STATE.config.supabaseKey);
     if (!ok) { showAuthScreen(); return; }
-
     SB.client.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT' || (event === 'TOKEN_REFRESHED' && !session)) {
         SB.user = null;
@@ -2551,15 +2598,12 @@ async function bootAuth() {
       }
       if (event === 'SIGNED_IN' && session) { SB.user = session.user; }
     });
-
     await new Promise(r => setTimeout(r, 400));
-
     const hash = window.location.hash;
     if (hash && hash.includes('access_token')) {
       await new Promise(r => setTimeout(r, 600));
       history.replaceState(null, '', window.location.pathname);
     }
-
     const session = await SB.getSession();
     if (session) {
       SB.user = session.user;
@@ -2567,8 +2611,8 @@ async function bootAuth() {
       setSyncStatus('ok', 'Supabase');
       await SyncQueue.flush();
       await fullSync();
-      const hashParams = new URLSearchParams(hash.replace('#', ''));
-      if (hashParams.get('type') === 'invite') showSetPasswordModal();
+      const hp = new URLSearchParams(hash.replace('#',''));
+      if (hp.get('type') === 'invite') showSetPasswordModal();
       else if (hash && hash.includes('access_token')) toast('Bienvenido — sesión iniciada', 'ok', 3000);
     } else {
       showAuthScreen();
